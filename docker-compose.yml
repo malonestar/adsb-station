@@ -1,0 +1,51 @@
+services:
+  ultrafeeder:
+    image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder:latest
+    container_name: ultrafeeder
+    hostname: ultrafeeder
+    restart: unless-stopped
+    device_cgroup_rules:
+      - 'c 189:* rwm'
+    ports:
+      - "80:80"
+      - "30003:30003"
+      - "30005:30005"
+      - "9273-9274:9273-9274"
+    environment:
+      - LOGLEVEL=error
+      - TZ=${FEEDER_TZ}
+      - READSB_DEVICE_TYPE=${READSB_DEVICE_TYPE}
+      - READSB_RTLSDR_DEVICE=${READSB_RTLSDR_DEVICE}
+      - READSB_GAIN=${READSB_GAIN}
+      - READSB_LAT=${FEEDER_LAT}
+      - READSB_LON=${FEEDER_LON}
+      - READSB_ALT=${FEEDER_ALT_M}m
+      - READSB_NET_ENABLE=true
+      - READSB_RX_LOCATION_ACCURACY=2
+      - READSB_STATS_RANGE=true
+      - READSB_NET_SBS_OUTPUT_PORT=30003
+      - READSB_NET_BEAST_OUTPUT_PORT=30005
+      - READSB_NET_CONNECTOR=
+      - PROMETHEUSMETRICS_ENABLE=true
+      - TAR1090_DEFAULTCENTERLAT=${FEEDER_LAT}
+      - TAR1090_DEFAULTCENTERLON=${FEEDER_LON}
+      - TAR1090_MESSAGERATEINTITLE=true
+      - TAR1090_PAGETITLE=ADSB Aurora CO
+      - TAR1090_PLANECOUNTINTITLE=true
+      - TAR1090_USEROUTESAPI=true
+    volumes:
+      - /mnt/ssd/data/globe_history:/var/globe_history
+      - /mnt/ssd/data/graphs1090:/var/lib/collectd
+      - /proc/diskstats:/proc/diskstats:ro
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+    networks:
+      - adsb_net
+
+networks:
+  adsb_net:
+    driver: bridge
+    name: adsb_net
