@@ -52,8 +52,18 @@ export function RadarMap({
   const select = useSelection((s) => s.select)
   const pendingFocusHex = useSelection((s) => s.pendingFocusHex)
   const consumeFocus = useSelection((s) => s.consumeFocus)
+  const followSelection = useSelection((s) => s.followSelection)
   const focusTarget = useAircraft((s) =>
     pendingFocusHex ? s.byHex[pendingFocusHex] : null,
+  )
+  // The currently-selected aircraft's live position — drives the TRACK
+  // follow loop. Subscribed via lat/lon scalars (not the whole record) so
+  // we re-render only when the position actually moves.
+  const followLat = useAircraft((s) =>
+    followSelection && selectedHex ? s.byHex[selectedHex]?.lat : null,
+  )
+  const followLon = useAircraft((s) =>
+    followSelection && selectedHex ? s.byHex[selectedHex]?.lon : null,
   )
   const rangeRingsOn = useSettings((s) => s.rangeRingsOn)
   const sweepOn = useSettings((s) => s.sweepOn)
@@ -202,6 +212,19 @@ export function RadarMap({
     }))
     consumeFocus()
   }, [pendingFocusHex, focusTarget, consumeFocus])
+
+  // TRACK button: keep the map centered on the selected aircraft as it moves.
+  // Pans (no zoom override) on every lat/lon change. Manual pan/zoom while
+  // following will snap back next tick — that's the documented contract;
+  // turn off TRACK to inspect freely.
+  useEffect(() => {
+    if (!followSelection || followLat == null || followLon == null) return
+    setViewState((v) => ({
+      ...v,
+      latitude: followLat,
+      longitude: followLon,
+    }))
+  }, [followSelection, followLat, followLon])
 
   const recenter = useCallback(
     () =>

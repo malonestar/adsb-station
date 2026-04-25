@@ -273,18 +273,28 @@ async def replay(
 async def alerts_live() -> dict[str, Any]:
     async with session_scope() as s:
         rows = (
-            await s.execute(select(Alert).where(Alert.cleared_at.is_(None)).order_by(Alert.triggered_at.desc()))
-        ).scalars().all()
-    return {"alerts": [_alert_row(r) for r in rows]}
+            await s.execute(
+                select(Alert, AircraftCatalog)
+                .outerjoin(AircraftCatalog, AircraftCatalog.hex == Alert.hex)
+                .where(Alert.cleared_at.is_(None))
+                .order_by(Alert.triggered_at.desc())
+            )
+        ).all()
+    return {"alerts": [_alert_row(a, c) for a, c in rows]}
 
 
 @router.get("/alerts")
 async def alerts_history(limit: int = Query(100, le=500)) -> dict[str, Any]:
     async with session_scope() as s:
         rows = (
-            await s.execute(select(Alert).order_by(Alert.triggered_at.desc()).limit(limit))
-        ).scalars().all()
-    return {"alerts": [_alert_row(r) for r in rows]}
+            await s.execute(
+                select(Alert, AircraftCatalog)
+                .outerjoin(AircraftCatalog, AircraftCatalog.hex == Alert.hex)
+                .order_by(Alert.triggered_at.desc())
+                .limit(limit)
+            )
+        ).all()
+    return {"alerts": [_alert_row(a, c) for a, c in rows]}
 
 
 class AlertTestRequest(BaseModel):
@@ -449,12 +459,24 @@ def _catalog_row(r: AircraftCatalog) -> dict[str, Any]:
     }
 
 
-def _alert_row(r: Alert) -> dict[str, Any]:
-    return {
+def _alert_row(r: Alert, catalog: AircraftCatalog | None = None) -> dict[str, Any]:
+    out: dict[str, Any] = {
         "id": r.id,
         "hex": r.hex,
         "kind": r.kind,
         "triggered_at": r.triggered_at.isoformat(),
         "cleared_at": r.cleared_at.isoformat() if r.cleared_at else None,
         "payload": r.payload,
+        "catalog": None,
     }
+    if catalog is not None:
+        out["catalog"] = {
+            "registration": catalog.registration,
+            "type_code": catalog.type_code,
+            "operator": catalog.operator,
+            "photo_url": catalog.photo_url,
+            "photo_thumb_url": catalog.photo_thumb_url,
+            "is_military": catalog.is_military,
+            "is_interesting": catalog.is_interesting,
+        }
+    return out

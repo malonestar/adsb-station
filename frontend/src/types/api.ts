@@ -139,6 +139,15 @@ export interface Alert {
   triggered_at: string
   cleared_at: string | null
   payload: Record<string, unknown>
+  catalog: {
+    registration: string | null
+    type_code: string | null
+    operator: string | null
+    photo_url: string | null
+    photo_thumb_url: string | null
+    is_military: boolean
+    is_interesting: boolean
+  } | null
 }
 
 export interface WatchlistEntry {

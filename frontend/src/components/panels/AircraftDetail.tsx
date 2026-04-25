@@ -109,6 +109,9 @@ export function AircraftDetail(): React.ReactElement {
 
   const watchLabel = live?.flight?.trim() || (detail?.catalog as { registration?: string } | null)?.registration || undefined
   const { watching, toggle: toggleWatch, isPending: watchPending } = useToggleWatch(hex, watchLabel)
+  const followSelection = useSelection((s) => s.followSelection)
+  const toggleFollow = useSelection((s) => s.toggleFollow)
+  const tracking = followSelection && Boolean(hex)
 
   const { data: route } = useQuery({
     queryKey: ['route', hex],
@@ -228,8 +231,23 @@ export function AircraftDetail(): React.ReactElement {
               {route && <RouteBlock route={route} />}
 
               <div className="flex gap-2 pt-2 border-t border-stroke-hair">
-                <Button variant="primary" className="px-4 py-2 lg:px-3 lg:py-1.5 text-xs">
-                  TRACK
+                <Button
+                  variant={tracking ? 'primary' : 'ghost'}
+                  onClick={toggleFollow}
+                  disabled={!hex || !live?.lat || !live?.lon}
+                  title={
+                    !live?.lat
+                      ? 'Aircraft has no position yet'
+                      : tracking
+                        ? 'Stop following — map will stop auto-centering'
+                        : 'Follow this aircraft — map auto-centers as it moves'
+                  }
+                  className={clsx(
+                    'px-4 py-2 lg:px-3 lg:py-1.5 text-xs',
+                    tracking && 'bg-efis-cyan/20 border-efis-cyan text-efis-cyan hover:border-efis-cyan',
+                  )}
+                >
+                  {tracking ? 'TRACKING ✓' : 'TRACK'}
                 </Button>
                 <Button
                   variant={watching ? 'primary' : 'ghost'}
