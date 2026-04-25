@@ -85,6 +85,42 @@ _AIRPORT_DEPART_VS = 300
 _AIRPORT_APPROACH_AGL_MAX = 8000
 _AIRPORT_DEPART_AGL_MAX = 10000
 
+# Callsign prefixes that imply commercial scheduled service. When these
+# appear in our airspace at low altitude with stale (non-matching) route
+# data, we force them to the commercial hub instead of letting closest-
+# airport bucket them at GA fields like KFTG/KAPA/KBKF that don't have
+# scheduled commercial service. Stale callsign data is the rule, not the
+# exception — adsbdb caches per-callsign-not-per-flight-instance and the
+# same flight number gets reused for different OD pairs throughout the day.
+_COMMERCIAL_PREFIXES = {
+    # US majors
+    "UAL", "AAL", "DAL", "SWA", "ASA", "JBU", "HAL", "B6",
+    # ULCCs
+    "FFT", "NKS", "AAY", "SCX", "VOI",
+    # Major regionals (often subbed for the majors at DEN)
+    "SKW", "ENY", "JIA", "EDV", "RPA", "GJS",
+    # Cargo
+    "UPS", "FDX", "GTI", "ATN",
+    # International commonly seen at DEN
+    "ACA", "WJA", "BAW", "AFR", "DLH", "ICE", "EIN",
+}
+# The commercial hub from our airport list. Any commercial flight that
+# falls into the closest-airport fallback gets force-assigned to this
+# airport. KDEN is the only commercial hub in our 4-airport list; the
+# other three (APA/BKF/FTG) are GA-only.
+_COMMERCIAL_HUB_ICAO = "KDEN"
+
+
+def _is_commercial_callsign(callsign: str | None) -> bool:
+    if not callsign:
+        return False
+    cs = callsign.strip().upper()
+    # Airline prefix is the leading 2-3 letters before the digits.
+    for n in (3, 2):
+        if cs[:n] in _COMMERCIAL_PREFIXES:
+            return True
+    return False
+
 
 def _haversine_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     from math import asin, cos, radians, sin, sqrt
@@ -177,6 +213,22 @@ async def airports_traffic(request: Request) -> dict[str, Any]:
                     closest_icao = ap["icao"]
             if closest_icao is None or closest_dist > _AIRPORT_RADIUS_NM:
                 continue
+            # Override: commercial-airline callsigns can't be landing at
+            # GA-only fields (KAPA/KBKF/KFTG) — they only fly to KDEN. If
+            # closest-airport sent them to a GA field, redirect to the
+            # commercial hub. The aircraft is still within our wider check
+            # zone since it's within radius of *some* airport in the list.
+            if (
+                closest_icao != _COMMERCIAL_HUB_ICAO
+                and _is_commercial_callsign(callsign)
+            ):
+                closest_icao = _COMMERCIAL_HUB_ICAO
+                closest_dist = _haversine_nm(
+                    next(a for a in _AIRPORT_LIST if a["icao"] == _COMMERCIAL_HUB_ICAO)["lat"],
+                    next(a for a in _AIRPORT_LIST if a["icao"] == _COMMERCIAL_HUB_ICAO)["lon"],
+                    st.lat,
+                    st.lon,
+                )
             target_icao = closest_icao
             if is_approaching:
                 bucket = "approaching"
