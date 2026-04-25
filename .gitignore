@@ -1,8 +1,21 @@
 # Environment / secrets
 .env
 .env.local
+.env.bak*
 *.key
 *.pem
+
+# Backups (timestamped tarballs and config snapshots from ops)
+*.bak*
+backend-backup-*.tar.gz
+*.tar.gz
+
+# Runtime data dirs (Grafana, Prometheus write to these)
+grafana/data/
+prometheus/data/
+
+# Stale nested duplicate from an early scp accident
+scripts/adsb/
 
 # Python
 __pycache__/
@@ -17,7 +30,7 @@ venv/
 dist/
 build/
 
-# Node
+# Node / Vite
 node_modules/
 .vite/
 
@@ -28,7 +41,7 @@ node_modules/
 *.swp
 *~
 
-# Logs / data
+# Logs / databases
 *.log
 *.db
 *.db-wal

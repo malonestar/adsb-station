@@ -1,0 +1,143 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "name": "Hardware Changes",
+        "enable": true,
+        "iconColor": "red",
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "target": {
+          "type": "dashboard",
+          "matchAny": false,
+          "tags": ["hardware-change"]
+        }
+      }
+    ]
+  },
+  "description": "Before/after antenna + SAW filter install comparison. Panels tell the story top-to-bottom. Powered by adsb-stats-exporter scraping Ultrafeeder's /data/stats.json + /data/aircraft.json every 15s.",
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "panels": [
+    {
+      "id": 1,
+      "title": "% Aircraft with Position",
+      "description": "Indoor whip ~40-60%. Outdoor antenna ~85-95%. Step change visible at install annotation.",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(adsb_aircraft_with_position / clamp_min(adsb_aircraft_observed, 1)) * 100",
+          "legendFormat": "% with position"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Signal / Noise / Peak (dBFS)",
+      "description": "Noise floor drops when SAW filter is added. Peak signal climbs with outdoor antenna. Watch for the gap (signal − noise) to widen.",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "adsb_signal_dbfs", "legendFormat": "mean signal (dBFS)" },
+        { "refId": "B", "expr": "adsb_noise_dbfs", "legendFormat": "noise floor (dBFS)" },
+        { "refId": "C", "expr": "adsb_peak_signal_dbfs", "legendFormat": "peak signal (dBFS)" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5 }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Autogain Value (dB)",
+      "description": "Should converge 3-6 dB lower after SAW filter is in line (less out-of-band energy → autogain permits less amplification).",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "adsb_gain_db",
+          "legendFormat": "gain (dB)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "none" }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Max Range per Hour (nm)",
+      "description": "Indoor ~30 nm → outdoor 150+ nm. Exporter reports last-minute max in meters; we take hourly max and convert.",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max_over_time(adsb_max_distance_meters[1h]) / 1852",
+          "legendFormat": "max range (nm)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "none" }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Messages/sec + Pi CPU Temp",
+      "description": "Dual-axis: correlate throttling with message drops if it ever happens. messages_per_min / 60 = msgs/sec.",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 26, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "adsb_messages_per_min / 60",
+          "legendFormat": "msgs/sec"
+        },
+        {
+          "refId": "B",
+          "expr": "avg(node_hwmon_temp_celsius)",
+          "legendFormat": "CPU temp (°C)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "none" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "CPU temp (°C)" },
+            "properties": [
+              { "id": "unit", "value": "celsius" },
+              { "id": "custom.axisPlacement", "value": "right" }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["adsb", "antenna"],
+  "templating": { "list": [] },
+  "time": { "from": "now-24h", "to": "now" },
+  "timezone": "browser",
+  "title": "ADS-B Antenna Comparison",
+  "uid": "adsb-antenna-comparison",
+  "version": 2,
+  "weekStart": ""
+}

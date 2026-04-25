@@ -1,0 +1,218 @@
+{
+  "uid": "adsb-receiver-health",
+  "title": "ADS-B Live Receiver Health",
+  "description": "Daily-driver dashboard for the station. Powered by the custom adsb-stats-exporter.",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "tags": ["adsb"],
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "30s",
+  "timepicker": {
+    "refresh_intervals": ["10s", "30s", "1m", "5m", "15m"],
+    "time_options": ["2h", "24h", "7d", "30d"]
+  },
+  "annotations": {
+    "list": [
+      {
+        "name": "Hardware Changes",
+        "enable": true,
+        "iconColor": "red",
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "target": { "type": "dashboard", "matchAny": false, "tags": ["hardware-change"] }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "text",
+      "title": "",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 2 },
+      "options": {
+        "mode": "html",
+        "content": "<div class=\"qrange\"><a href=\"?from=now-2h&to=now&refresh=30s\">2h</a><a href=\"?from=now-24h&to=now&refresh=30s\">24h</a><a href=\"?from=now-7d&to=now&refresh=30s\">7d</a><a href=\"?from=now-30d&to=now&refresh=30s\">30d</a><span class=\"qsep\"></span><a href=\"https://www.flightaware.com/adsb/stats/user/malonestar#stats-273304\" target=\"_blank\" class=\"qext\">FlightAware coverage graph &rarr;</a></div><style>.qrange{display:flex;align-items:center;gap:8px;padding:4px 2px}.qrange a{display:inline-block;padding:6px 14px;background:#2a2d35;color:#d8d9da;border-radius:4px;font-weight:600;text-decoration:none;font-size:13px}.qrange a:hover{background:#3d4049;color:#fff}.qrange a.qext{background:transparent;color:#8ab4f8;border:1px solid #2a2d35}.qrange a.qext:hover{background:#1e2128;color:#aed0ff}.qsep{flex:1}</style>"
+      }
+    },
+    {
+      "id": 1, "type": "stat", "title": "Aircraft tracked",
+      "gridPos": { "x": 0, "y": 2, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "adsb_aircraft_observed" }],
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } },
+      "options": { "colorMode": "value", "graphMode": "line", "textMode": "auto" }
+    },
+    {
+      "id": 2, "type": "stat", "title": "Messages / sec",
+      "gridPos": { "x": 4, "y": 2, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "adsb_messages_per_min / 60" }],
+      "fieldConfig": { "defaults": { "unit": "cps", "decimals": 1 } },
+      "options": { "colorMode": "value", "graphMode": "line", "textMode": "auto" }
+    },
+    {
+      "id": 3, "type": "stat", "title": "Max range (24h)",
+      "gridPos": { "x": 8, "y": 2, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "max_over_time(adsb_max_distance_meters[24h]) / 1852" }],
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "custom": { "displayName": "nm" } } },
+      "options": { "colorMode": "value", "graphMode": "none", "textMode": "auto" }
+    },
+    {
+      "id": 4, "type": "stat", "title": "SNR (dB)",
+      "gridPos": { "x": 12, "y": 2, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "adsb_signal_dbfs - adsb_noise_dbfs" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 15 },
+              { "color": "green", "value": 20 }
+            ]
+          }
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "area", "textMode": "auto" }
+    },
+    {
+      "id": 5, "type": "stat", "title": "Gain (dB)",
+      "gridPos": { "x": 16, "y": 2, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "adsb_gain_db" }],
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 1 } },
+      "options": { "colorMode": "value", "graphMode": "area", "textMode": "auto" }
+    },
+    {
+      "id": 6, "type": "stat", "title": "Exporter uptime",
+      "gridPos": { "x": 20, "y": 2, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "time() - process_start_time_seconds{job=\"adsb-stats-exporter\"}" }],
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 0 } },
+      "options": { "colorMode": "none", "graphMode": "none", "textMode": "auto" }
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Aircraft tracked (stacked)",
+      "description": "Green = aircraft with a decoded position. Grey = tracked but no position yet (usually just arrived in range).",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "adsb_aircraft_with_position", "legendFormat": "with position" },
+        { "refId": "B", "expr": "adsb_aircraft_without_position", "legendFormat": "no position" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 40, "stacking": { "mode": "normal", "group": "A" } }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "with position" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
+          { "matcher": { "id": "byName", "options": "no position" },   "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#808080" } }] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] } }
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Messages / sec (Mode-S share overlaid)",
+      "description": "Solid = valid ADS-B + Mode-S accepted. Dashed = Mode-S only (shorter, no position data).",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "adsb_messages_per_min / 60", "legendFormat": "messages/s" },
+        { "refId": "B", "expr": "adsb_mode_s_per_min / 60",   "legendFormat": "mode-s/s" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cps", "decimals": 1,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "mode-s/s" }, "properties": [{ "id": "custom.lineStyle", "value": { "dash": [8, 4], "fill": "dash" } }] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] } }
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "Max range (nm)",
+      "description": "Max distance observed each minute. The money panel for antenna health.",
+      "gridPos": { "x": 0, "y": 14, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "adsb_max_distance_meters / 1852", "legendFormat": "max range (nm)" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "decimals": 0,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["max", "mean"] } }
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "Signal / Noise / Peak (dBFS)",
+      "description": "Signal-noise gap (SNR) is the key health indicator. Widening gap = better reception.",
+      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "adsb_signal_dbfs",     "legendFormat": "mean signal" },
+        { "refId": "B", "expr": "adsb_noise_dbfs",      "legendFormat": "noise floor" },
+        { "refId": "C", "expr": "adsb_peak_signal_dbfs", "legendFormat": "peak signal" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "decimals": 1,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5 }
+        }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean"] } }
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "CPR position decodes (stacked)",
+      "description": "Global = preferred method using two paired positions. Local = fallback when only one position is available.",
+      "gridPos": { "x": 0, "y": 22, "w": 12, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "adsb_cpr_global_ok_per_min", "legendFormat": "global OK/min" },
+        { "refId": "B", "expr": "adsb_cpr_local_ok_per_min",  "legendFormat": "local OK/min" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 40, "stacking": { "mode": "normal", "group": "A" } }
+        }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean"] } }
+    },
+    {
+      "id": 13, "type": "timeseries", "title": "Decode errors & saturation",
+      "description": "Bad frames = decode failures (RF noise). Strong signals = near-saturation (drop gain if this climbs).",
+      "gridPos": { "x": 12, "y": 22, "w": 12, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "adsb_bad_frames_per_min",     "legendFormat": "bad frames/min" },
+        { "refId": "B", "expr": "adsb_strong_signals_per_min", "legendFormat": "strong signals/min" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "axisPlacement": "auto" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "strong signals/min" },
+            "properties": [
+              { "id": "custom.axisPlacement", "value": "right" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }
+            ]
+          },
+          { "matcher": { "id": "byName", "options": "bad frames/min" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] } }
+    }
+  ]
+}

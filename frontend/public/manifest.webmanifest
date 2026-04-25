@@ -1,0 +1,26 @@
+{
+  "name": "ADS-B Aurora",
+  "short_name": "ADSB",
+  "description": "Live aircraft tracking from the Aurora, CO ground station.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#05080A",
+  "theme_color": "#05080A",
+  "categories": ["utilities", "travel"],
+  "icons": [
+    {
+      "src": "/icons/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/apple-touch-icon.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

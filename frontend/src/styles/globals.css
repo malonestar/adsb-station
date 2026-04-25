@@ -1,0 +1,229 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme {
+  --color-bg-0: var(--bg-0);
+  --color-bg-1: var(--bg-1);
+  --color-bg-2: var(--bg-2);
+  --color-bg-3: var(--bg-3);
+  --color-stroke-hair: var(--stroke-hair);
+  --color-stroke-soft: var(--stroke-soft);
+  --color-text-hi:  var(--text-hi);
+  --color-text-mid: var(--text-mid);
+  --color-text-low: var(--text-low);
+  --color-efis-cyan:  var(--efis-cyan);
+  --color-efis-amber: var(--efis-amber);
+  --color-efis-red:   var(--efis-red);
+  --color-efis-white: var(--efis-white);
+  --color-efis-violet: var(--efis-violet);
+  --color-phos-dim:  var(--phos-dim);
+  --color-phos-mid:  var(--phos-mid);
+  --color-phos-hi:   var(--phos-hi);
+  --color-phos-glow: var(--phos-glow);
+  --font-mono: var(--font-mono);
+  --font-sans: var(--font-sans);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  /* On iOS Safari, `height: 100%` on <html> resolves against the largest
+   * viewport (URL bar collapsed), leaving dead space at the bottom when the
+   * URL bar is visible. `100dvh` resolves to the *current* visible viewport,
+   * so the layout always reflects reality. Keep `100%` as a fallback for
+   * browsers without dvh support. */
+  height: 100dvh;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-0);
+  color: var(--text-hi);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv01", "cv03", "cv09";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+/* Mono defaults for numerics */
+.num, .mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* EFIS uppercase section headers */
+.section-header {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-low);
+}
+
+/* Hairline rule */
+.hair {
+  border-color: var(--stroke-hair);
+}
+
+/* Scrollbars — muted */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--stroke-soft);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-low); }
+
+/* MapLibre control styling override */
+.maplibregl-ctrl-attrib {
+  background: rgba(11, 16, 19, 0.65) !important;
+  color: var(--text-low) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 10px !important;
+}
+.maplibregl-ctrl-attrib a { color: var(--text-mid) !important; }
+
+/* Radar sweep — positioned via inline left/top at the station pixel.
+   The translate(-50%, -50%) centers the element on that point; rotation
+   is composed into the same transform by the keyframes. */
+.radar-sweep {
+  position: absolute;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(21, 194, 77, 0.18) 20deg,
+    rgba(21, 194, 77, 0.02) 60deg,
+    transparent 90deg
+  );
+  animation: sweep var(--radar-sweep-dur) linear infinite;
+  mix-blend-mode: screen;
+  opacity: 0.8;
+  mask-image: radial-gradient(circle at center, #000 0%, #000 70%, transparent 100%);
+  transform-origin: center center;
+}
+@keyframes sweep {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(110, 255, 154, 0.04) 0px,
+    rgba(110, 255, 154, 0.04) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: screen;
+  z-index: 10;
+}
+
+/* Pulse for station marker */
+@keyframes station-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50%      { transform: scale(1.2); opacity: 1; }
+}
+
+/* HUD brackets for selected aircraft */
+.hud-bracket {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  pointer-events: none;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * Aircraft markers — HTML overlay positioned via WebMercatorViewport.
+ * Keyed by hex so identity is stable; CSS transitions animate movement.
+ * Rendered ABOVE the deck.gl canvas but non-interactive (pointer-events: none)
+ * so map pan/zoom + click-picking flow through to the deck.gl canvas below.
+ * The `.aircraft-interacting` class disables the transform transition during
+ * user-initiated pan/zoom so markers stay glued to the map.
+ * ────────────────────────────────────────────────────────────── */
+.aircraft-marker {
+  will-change: transform;
+  transition: transform 500ms linear;
+  transform-origin: 0 0;
+}
+
+.aircraft-interacting .aircraft-marker {
+  transition: none;
+}
+
+.aircraft-marker-icon {
+  display: block;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  transition: transform 800ms linear, background-color 200ms linear;
+}
+
+.aircraft-interacting .aircraft-marker-icon {
+  transition: none;
+}
+
+.aircraft-marker-label {
+  position: absolute;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: currentColor;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.85);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.aircraft-marker-selected .aircraft-marker-label {
+  opacity: 1;
+  font-weight: 500;
+}
+
+.aircraft-marker-emergency .aircraft-marker-label {
+  opacity: 1;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * Mobile + PWA polish
+ * ────────────────────────────────────────────────────────────── */
+
+/* Hide scrollbar on the horizontal tab row (TopBar on phones) — bar is already
+ * obvious from content; the visible track looks like noise at 6px tall. */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Kill the gray tap-highlight rect iOS draws around tapped elements. Our own
+ * :active states already handle feedback. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* When installed as a standalone PWA, `display-mode: standalone` is active.
+ * Add iOS safe-area padding so the TopBar doesn't hide under the status bar
+ * / notch and the bottom content clears the home-indicator area. */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    background: var(--bg-0);
+  }
+}

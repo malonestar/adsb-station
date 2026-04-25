@@ -1,0 +1,64 @@
+:root {
+  /* ─── Base chrome ─── */
+  --bg-0: #05080A;
+  --bg-1: #0B1013;
+  --bg-2: #131A1F;
+  --bg-3: #1C252C;
+  --stroke-hair: #243038;
+  --stroke-soft: #334049;
+
+  /* ─── Typography ─── */
+  --text-hi:  #E6F1F7;
+  --text-mid: #8FA5B2;
+  --text-low: #4E6370;
+
+  /* ─── EFIS chrome accents ─── */
+  --efis-cyan:  #00D4FF;
+  --efis-amber: #FFB020;
+  --efis-red:   #FF3B2F;
+  --efis-white: #FFFFFF;
+  --efis-violet: #B58CFF;
+
+  /* ─── Radar phosphor (map only) ─── */
+  --phos-dim:  #0A3D1E;
+  --phos-mid:  #15C24D;
+  --phos-hi:   #6EFF9A;
+  --phos-glow: #9EFFB8;
+
+  /* ─── Altitude ramp ─── */
+  --alt-surface:  #FF3B2F;
+  --alt-low:      #FF8A20;
+  --alt-mid:      #FFB020;
+  --alt-cruise:   #6EFF9A;
+  --alt-high:     #00D4FF;
+  --alt-stratos:  #B58CFF;
+
+  /* ─── Motion ─── */
+  --ease-efis: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-mid:  220ms;
+  --dur-slow: 420ms;
+  --radar-sweep-dur: 6s;
+  --aircraft-interp: 1000ms;
+
+  /* ─── Type ─── */
+  --font-mono: "JetBrains Mono", "Berkeley Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+
+  /* ─── Layout ─── */
+  --topbar-h:   48px;
+  --leftrail-w: 280px;
+  --rightrail-w: 360px;
+  --kiosk-topbar-h: 40px;
+  --kiosk-panel-w:  280px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-mid:  0ms;
+    --dur-slow: 0ms;
+    --radar-sweep-dur: 0s;
+    --aircraft-interp: 0ms;
+  }
+}

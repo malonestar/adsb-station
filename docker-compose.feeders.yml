@@ -1,0 +1,96 @@
+services:
+  piaware:
+    image: ghcr.io/sdr-enthusiasts/docker-piaware:latest
+    container_name: piaware
+    hostname: piaware
+    restart: unless-stopped
+    depends_on:
+      - ultrafeeder
+    environment:
+      - TZ=${FEEDER_TZ}
+      - LAT=${FEEDER_LAT}
+      - LONG=${FEEDER_LON}
+      - FEEDER_ID=${FEEDER_PIAWARE_FEEDER_ID}
+      - RECEIVER_TYPE=relay
+      - BEASTHOST=ultrafeeder
+      - BEASTPORT=30005
+    volumes:
+      - /mnt/ssd/data/piaware:/var/cache/piaware
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+    networks:
+      - adsb_net
+
+  fr24feed:
+    image: ghcr.io/sdr-enthusiasts/docker-flightradar24:latest
+    container_name: fr24feed
+    hostname: fr24feed
+    restart: unless-stopped
+    depends_on:
+      - ultrafeeder
+    environment:
+      - TZ=${FEEDER_TZ}
+      - BEASTHOST=ultrafeeder
+      - BEASTPORT=30005
+      - FR24KEY=${FEEDER_FR24_SHARING_KEY}
+      # FR24 policy: MLAT disabled when sharing with other networks.
+      - MLAT=no
+    dns_search: .
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+    networks:
+      - adsb_net
+
+  opensky-feeder:
+    image: ghcr.io/sdr-enthusiasts/docker-opensky-network:latest
+    container_name: opensky-feeder
+    hostname: opensky-feeder
+    restart: unless-stopped
+    depends_on:
+      - ultrafeeder
+    environment:
+      - TZ=${FEEDER_TZ}
+      - BEASTHOST=ultrafeeder
+      - BEASTPORT=30005
+      - LAT=${FEEDER_LAT}
+      - LONG=${FEEDER_LON}
+      - ALT=${FEEDER_ALT_M}
+      - OPENSKY_USERNAME=${FEEDER_OPENSKY_USERNAME}
+      - OPENSKY_SERIAL=${FEEDER_OPENSKY_SERIAL}
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+    networks:
+      - adsb_net
+
+  rbfeeder:
+    image: ghcr.io/sdr-enthusiasts/docker-radarbox:latest
+    container_name: rbfeeder
+    hostname: rbfeeder
+    restart: unless-stopped
+    depends_on:
+      - ultrafeeder
+    environment:
+      - TZ=${FEEDER_TZ}
+      - LAT=${FEEDER_LAT}
+      - LONG=${FEEDER_LON}
+      - ALT=${FEEDER_ALT_M}m
+      - BEASTHOST=ultrafeeder
+      - BEASTPORT=30005
+      - SHARING_KEY=${FEEDER_RB_SHARING_KEY}
+      # MLAT enabled — AirNav welcomes multi-network MLAT (unlike FR24). The
+      # relevant env var if we ever want to disable it is ENABLE_MLAT=false.
+    volumes:
+      - /mnt/ssd/data/rbfeeder:/etc/rbfeeder
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+    networks:
+      - adsb_net
+
+networks:
+  adsb_net:
+    external: true
+    name: adsb_net
