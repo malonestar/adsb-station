@@ -11,6 +11,7 @@ import type {
   WatchlistEntry,
   WatchlistDetailItem,
   GlobalAircraft,
+  AirportMovement,
   Alert,
   HeatmapBin,
   ReplayPoint,
@@ -32,6 +33,17 @@ export const api = {
     j<{ radius_nm: number; count: number; aircraft: GlobalAircraft[] }>(
       `/aircraft/global?radius_nm=${radiusNm}`,
     ),
+  airportsTraffic: () =>
+    j<{
+      airports: Array<{ icao: string; iata: string | null; name: string; short: string; lat: number; lon: number; elev_ft: number }>
+      by_icao: Record<
+        string,
+        {
+          approaching: AirportMovement[]
+          departing: AirportMovement[]
+        }
+      >
+    }>('/airports/traffic'),
   aircraftDetail: (hex: string) =>
     j<{ hex: string; live: unknown; catalog: unknown; trail: unknown[] }>(`/aircraft/${hex}`),
   aircraftTrails: (seconds = 300) =>

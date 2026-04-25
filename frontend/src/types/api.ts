@@ -185,6 +185,26 @@ export interface WatchlistDetailItem {
   } | null
 }
 
+/** A single arrival/departure row on the airports board. */
+export interface AirportMovement {
+  hex: string
+  callsign: string
+  type_code: string | null
+  alt_baro: number | null
+  agl_ft: number | null
+  baro_rate: number | null
+  gs: number | null
+  distance_nm: number
+  lat: number
+  lon: number
+  track: number | null
+  origin_icao: string | null
+  destination_icao: string | null
+  /** True when the bucket assignment came from route data (origin/dest matches
+   *  the airport), not the closest-airport fallback. */
+  from_route_data: boolean
+}
+
 /** Slim aircraft shape from adsb.lol global-context overlay. */
 export interface GlobalAircraft {
   hex: string

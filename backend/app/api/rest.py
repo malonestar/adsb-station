@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from app.alerts.watchlist import watchlist
 from app.config import settings
-from app.db.models import Alert, AircraftCatalog
+from app.db.models import Alert, AircraftCatalog, RouteCache
 from app.db.session import session_scope
 from app.enrichment import adsblol
 from app.enrichment.coordinator import coordinator as enrichment_coordinator
@@ -65,6 +65,168 @@ def _get_poller(request: Request) -> ReadsbPoller:
     if poller is None:
         raise HTTPException(status_code=503, detail="poller_not_started")
     return poller
+
+
+# ── Airport traffic boards ──────────────────────────────────────────────
+# Tunables; mirror the frontend lib/airports.ts knobs.
+_AIRPORT_LIST: list[dict[str, Any]] = [
+    {"icao": "KDEN", "iata": "DEN", "name": "Denver International",
+     "short": "DEN", "lat": 39.8617, "lon": -104.6731, "elev_ft": 5434},
+    {"icao": "KAPA", "iata": "APA", "name": "Centennial",
+     "short": "APA", "lat": 39.5701, "lon": -104.8493, "elev_ft": 5885},
+    {"icao": "KBKF", "iata": None, "name": "Buckley Space Force Base",
+     "short": "BKF", "lat": 39.7017, "lon": -104.7517, "elev_ft": 5662},
+    {"icao": "KFTG", "iata": None, "name": "Front Range",
+     "short": "FTG", "lat": 39.7853, "lon": -104.5436, "elev_ft": 5512},
+]
+_AIRPORT_RADIUS_NM = 30
+_AIRPORT_APPROACH_VS = -300
+_AIRPORT_DEPART_VS = 300
+_AIRPORT_APPROACH_AGL_MAX = 8000
+_AIRPORT_DEPART_AGL_MAX = 10000
+
+
+def _haversine_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    from math import asin, cos, radians, sin, sqrt
+
+    phi1, phi2 = radians(lat1), radians(lat2)
+    dphi = radians(lat2 - lat1)
+    dlam = radians(lon2 - lon1)
+    a = sin(dphi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(dlam / 2) ** 2
+    return 2 * 3440.065 * asin(sqrt(a))
+
+
+@router.get("/airports/traffic")
+async def airports_traffic(request: Request) -> dict[str, Any]:
+    """Per-airport approaching/departing buckets, using route data to assign
+    aircraft to their actual origin/destination airport when available.
+
+    Falls back to closest-airport-by-distance only when no route data is
+    available (callsign missing, or route_cache hasn't resolved it yet).
+    Single SQL query joins all live callsigns to the route_cache so we
+    don't N+1 per aircraft.
+    """
+    poller = _get_poller(request)
+    states = poller.current()
+
+    # Pull route data for every callsign present in the live registry. One
+    # query, indexed lookup. Misses (no row, or `not_found` row) just won't
+    # appear in the map and we'll fall back to closest-airport.
+    callsigns = [s.flight.strip().upper() for s in states if s.flight and s.flight.strip()]
+    routes_by_call: dict[str, RouteCache] = {}
+    if callsigns:
+        async with session_scope() as s:
+            rows = (
+                await s.execute(
+                    select(RouteCache).where(RouteCache.callsign.in_(callsigns))
+                )
+            ).scalars().all()
+        routes_by_call = {r.callsign: r for r in rows}
+
+    by_icao: dict[str, dict[str, list[dict[str, Any]]]] = {
+        a["icao"]: {"approaching": [], "departing": []} for a in _AIRPORT_LIST
+    }
+    airports_by_icao = {a["icao"]: a for a in _AIRPORT_LIST}
+
+    for st in states:
+        if st.lat is None or st.lon is None:
+            continue
+        callsign = (st.flight or "").strip().upper() or None
+        route = routes_by_call.get(callsign) if callsign else None
+
+        # Decide which airport this aircraft "belongs to" and in which bucket.
+        # Priority: route data (origin → DEPARTING that airport, destination
+        # → APPROACHING that airport). Fall back to closest-airport-within-
+        # radius when the route doesn't tell us anything useful.
+        target_icao: str | None = None
+        bucket: str | None = None
+        is_departing = (
+            st.baro_rate is not None
+            and st.baro_rate >= _AIRPORT_DEPART_VS
+        )
+        is_approaching = (
+            st.baro_rate is not None
+            and st.baro_rate <= _AIRPORT_APPROACH_VS
+        )
+
+        if route is not None:
+            if (
+                route.origin_icao
+                and route.origin_icao in by_icao
+                and is_departing
+            ):
+                target_icao = route.origin_icao
+                bucket = "departing"
+            elif (
+                route.destination_icao
+                and route.destination_icao in by_icao
+                and is_approaching
+            ):
+                target_icao = route.destination_icao
+                bucket = "approaching"
+
+        if target_icao is None:
+            # Fallback: closest airport in our list, then climb/descend
+            # decides bucket. This catches GA aircraft with no route data.
+            closest_icao: str | None = None
+            closest_dist = float("inf")
+            for ap in _AIRPORT_LIST:
+                d = _haversine_nm(ap["lat"], ap["lon"], st.lat, st.lon)
+                if d < closest_dist:
+                    closest_dist = d
+                    closest_icao = ap["icao"]
+            if closest_icao is None or closest_dist > _AIRPORT_RADIUS_NM:
+                continue
+            target_icao = closest_icao
+            if is_approaching:
+                bucket = "approaching"
+            elif is_departing:
+                bucket = "departing"
+            else:
+                continue
+
+        if target_icao is None or bucket is None:
+            continue
+        ap = airports_by_icao[target_icao]
+        distance_nm = _haversine_nm(ap["lat"], ap["lon"], st.lat, st.lon)
+        if distance_nm > _AIRPORT_RADIUS_NM:
+            continue
+        agl_ft = st.alt_baro - ap["elev_ft"] if st.alt_baro is not None else None
+        if agl_ft is None or agl_ft < -200:
+            continue
+        # Per-bucket altitude gate (tighter for approach than for departure).
+        if bucket == "approaching" and agl_ft > _AIRPORT_APPROACH_AGL_MAX:
+            continue
+        if bucket == "departing" and agl_ft > _AIRPORT_DEPART_AGL_MAX:
+            continue
+
+        movement: dict[str, Any] = {
+            "hex": st.hex,
+            "callsign": callsign or st.registration or st.hex.upper(),
+            "type_code": st.type_code,
+            "alt_baro": st.alt_baro,
+            "agl_ft": agl_ft,
+            "baro_rate": st.baro_rate,
+            "gs": st.gs,
+            "distance_nm": distance_nm,
+            "lat": st.lat,
+            "lon": st.lon,
+            "track": st.track,
+            "origin_icao": route.origin_icao if route else None,
+            "destination_icao": route.destination_icao if route else None,
+            "from_route_data": route is not None and (
+                (bucket == "approaching" and route.destination_icao == target_icao)
+                or (bucket == "departing" and route.origin_icao == target_icao)
+            ),
+        }
+        by_icao[target_icao][bucket].append(movement)
+
+    # Sort each bucket by distance ascending — closest first
+    for icao in by_icao:
+        for bucket in ("approaching", "departing"):
+            by_icao[icao][bucket].sort(key=lambda m: m["distance_nm"])
+
+    return {"airports": _AIRPORT_LIST, "by_icao": by_icao}
 
 
 @router.get("/aircraft/global")
