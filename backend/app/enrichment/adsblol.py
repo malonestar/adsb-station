@@ -18,6 +18,77 @@ log = get_logger(__name__)
 _breaker = CircuitBreaker(name="adsblol")
 _SOURCE = "adsblol_route"
 
+# Global-context cache: a single bucket of nearby-aircraft results, refreshed
+# at most once per `_GLOBAL_TTL_S` seconds. Keyed on (lat, lon, dist) rounded
+# to mute trivial coord drift; in practice we only ever ask about the station's
+# coords so this is effectively a singleton cache.
+import time as _time
+_GLOBAL_TTL_S = 5.0
+_global_cache: dict[tuple[float, float, int], tuple[float, list[dict[str, Any]]]] = {}
+
+
+async def lookup_nearby(lat: float, lon: float, dist_nm: int) -> list[dict[str, Any]]:
+    """Pull all aircraft within `dist_nm` of (lat, lon) from adsb.lol.
+
+    Returns a slim representation per aircraft (hex, callsign, lat, lon,
+    alt_baro, gs, track, type, category) — drops the bulky Mode-S / RSSI
+    fields we don't need for a faded overlay. Empty list on any error.
+    Cached server-side for a few seconds so multiple frontends don't each
+    hit adsb.lol independently.
+    """
+    key = (round(lat, 3), round(lon, 3), int(dist_nm))
+    now = _time.monotonic()
+    hit = _global_cache.get(key)
+    if hit is not None and now - hit[0] < _GLOBAL_TTL_S:
+        return hit[1]
+
+    if _breaker.is_open:
+        return hit[1] if hit is not None else []
+
+    # adsb.lol /v2 endpoint shape: /lat/{lat}/lon/{lon}/dist/{nm}
+    base = settings.adsblol_base.rstrip("/")
+    url = f"{base}/lat/{lat}/lon/{lon}/dist/{int(dist_nm)}"
+    try:
+        async with httpx.AsyncClient(timeout=settings.http_timeout_s) as c:
+            r = await c.get(url, headers={"User-Agent": "adsb-tracker/0.1"})
+        r.raise_for_status()
+        data = r.json()
+        _breaker.record_success()
+    except Exception as e:  # noqa: BLE001
+        log.warning("adsblol_nearby_failed", error=str(e))
+        _breaker.record_failure()
+        return hit[1] if hit is not None else []
+
+    raw = data.get("ac") or []
+    out: list[dict[str, Any]] = []
+    for a in raw:
+        # adsb.lol uses string altitudes ("ground", or stringified ints).
+        alt_baro = a.get("alt_baro")
+        if isinstance(alt_baro, str):
+            alt_baro = None if alt_baro == "ground" else _try_int(alt_baro)
+        out.append(
+            {
+                "hex": (a.get("hex") or "").lower(),
+                "flight": (a.get("flight") or "").strip() or None,
+                "lat": a.get("lat"),
+                "lon": a.get("lon"),
+                "alt_baro": alt_baro,
+                "gs": a.get("gs"),
+                "track": a.get("track"),
+                "type_code": a.get("t") or None,
+                "category": a.get("category") or None,
+            }
+        )
+    _global_cache[key] = (now, out)
+    return out
+
+
+def _try_int(s: str) -> int | None:
+    try:
+        return int(s)
+    except (TypeError, ValueError):
+        return None
+
 
 async def lookup_route(callsign: str) -> dict[str, Any] | None:
     """Look up origin/destination airports for a callsign (IATA/ICAO flight)."""

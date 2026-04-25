@@ -6,10 +6,11 @@ import { useStats } from '@/store/stats'
 import { useWatchlist } from '@/lib/watchlist'
 import { clsx } from 'clsx'
 
-const ROUTES: { to: string; label: string; key: 'radar' | 'catalog' | 'watchlist' | 'stats' | 'feeds' | 'alerts' | 'cfg' }[] = [
+const ROUTES: { to: string; label: string; key: 'radar' | 'catalog' | 'watchlist' | 'airports' | 'stats' | 'feeds' | 'alerts' | 'cfg' }[] = [
   { to: '/', label: 'RADAR', key: 'radar' },
   { to: '/catalog', label: 'CATALOG', key: 'catalog' },
   { to: '/watchlist', label: 'WATCHLIST', key: 'watchlist' },
+  { to: '/airports', label: 'AIRPORTS', key: 'airports' },
   { to: '/stats', label: 'STATS', key: 'stats' },
   { to: '/feeds', label: 'FEEDS', key: 'feeds' },
   { to: '/alerts', label: 'ALERTS', key: 'alerts' },

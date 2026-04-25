@@ -10,6 +10,7 @@ import type {
   RouteInfo,
   WatchlistEntry,
   WatchlistDetailItem,
+  GlobalAircraft,
   Alert,
   HeatmapBin,
   ReplayPoint,
@@ -27,6 +28,10 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   receiver: () => j<ReceiverInfo>('/receiver'),
   aircraftLive: () => j<AircraftLiveResponse>('/aircraft/live'),
+  aircraftGlobal: (radiusNm = 200) =>
+    j<{ radius_nm: number; count: number; aircraft: GlobalAircraft[] }>(
+      `/aircraft/global?radius_nm=${radiusNm}`,
+    ),
   aircraftDetail: (hex: string) =>
     j<{ hex: string; live: unknown; catalog: unknown; trail: unknown[] }>(`/aircraft/${hex}`),
   aircraftTrails: (seconds = 300) =>

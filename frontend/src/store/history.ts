@@ -6,6 +6,9 @@ interface HistoryStore {
   heatmapOn: boolean
   heatmapWindow: HeatmapWindow
   allTrailsOn: boolean
+  /** Show adsb.lol "global context" aircraft beyond our antenna range as a
+   *  faded overlay. Off by default — adds visual density when on. */
+  globalOn: boolean
   /** Hex whose full-history trail is currently rendered, or null.
    *  Only one aircraft's full history is visible at a time — selecting a new
    *  aircraft and toggling its HISTORY replaces the previous trail. */
@@ -14,6 +17,7 @@ interface HistoryStore {
   setHeatmapOn: (v: boolean) => void
   setHeatmapWindow: (w: HeatmapWindow) => void
   setAllTrailsOn: (v: boolean) => void
+  setGlobalOn: (v: boolean) => void
   /** Toggle the full-history trail for a given hex: same hex → clear, new hex → replace. */
   toggleHistoryHex: (hex: string) => void
   clearHistoryHex: () => void
@@ -23,11 +27,13 @@ export const useHistory = create<HistoryStore>((set) => ({
   heatmapOn: false,
   heatmapWindow: '24h',
   allTrailsOn: false,
+  globalOn: false,
   historyHex: null,
 
   setHeatmapOn: (v) => set({ heatmapOn: v }),
   setHeatmapWindow: (w) => set({ heatmapWindow: w }),
   setAllTrailsOn: (v) => set({ allTrailsOn: v }),
+  setGlobalOn: (v) => set({ globalOn: v }),
   toggleHistoryHex: (hex) =>
     set((s) => ({ historyHex: s.historyHex === hex ? null : hex })),
   clearHistoryHex: () => set({ historyHex: null }),

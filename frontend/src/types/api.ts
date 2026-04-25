@@ -185,6 +185,19 @@ export interface WatchlistDetailItem {
   } | null
 }
 
+/** Slim aircraft shape from adsb.lol global-context overlay. */
+export interface GlobalAircraft {
+  hex: string
+  flight: string | null
+  lat: number
+  lon: number
+  alt_baro: number | null
+  gs: number | null
+  track: number | null
+  type_code: string | null
+  category: string | null
+}
+
 export interface SignalBucket {
   bucket: number
   count: number

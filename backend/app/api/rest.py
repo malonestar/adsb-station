@@ -16,6 +16,7 @@ from app.alerts.watchlist import watchlist
 from app.config import settings
 from app.db.models import Alert, AircraftCatalog
 from app.db.session import session_scope
+from app.enrichment import adsblol
 from app.enrichment.coordinator import coordinator as enrichment_coordinator
 from app.enrichment.route import route_service
 from app.feeds.health import health
@@ -64,6 +65,41 @@ def _get_poller(request: Request) -> ReadsbPoller:
     if poller is None:
         raise HTTPException(status_code=503, detail="poller_not_started")
     return poller
+
+
+@router.get("/aircraft/global")
+async def aircraft_global(
+    request: Request,
+    radius_nm: int = Query(200, ge=10, le=400),
+) -> dict[str, Any]:
+    """Aircraft from adsb.lol within a radius of the station.
+
+    Used by the radar's GLOBAL toggle to show ambient traffic beyond our
+    antenna range. Server-side TTL-cached so multiple browser tabs don't
+    each hammer adsb.lol. Dedups against our own live registry — there's
+    no point rendering an aircraft twice if we're picking it up directly.
+    """
+    poller = _get_poller(request)
+    own_hexes = {s.hex.lower() for s in poller.current()}
+    rows = await adsblol.lookup_nearby(
+        lat=settings.feeder_lat,
+        lon=settings.feeder_lon,
+        dist_nm=radius_nm,
+    )
+    # Strip out aircraft we already track ourselves + any rows missing
+    # position data (not renderable as map markers).
+    out = [
+        r for r in rows
+        if r.get("lat") is not None
+        and r.get("lon") is not None
+        and r.get("hex")
+        and r["hex"] not in own_hexes
+    ]
+    return {
+        "radius_nm": radius_nm,
+        "count": len(out),
+        "aircraft": out,
+    }
 
 
 @router.get("/aircraft/live")

@@ -17,6 +17,7 @@ import { ringPolygon } from '@/lib/geo'
 import { api } from '@/lib/api'
 import { iconSizeForCategory } from './getAircraftIcon'
 import { AircraftMarkers } from './AircraftMarkers'
+import { GlobalMarkers } from './GlobalMarkers'
 import type { AircraftState } from '@/types/api'
 
 const MIN_ZOOM = 4
@@ -76,7 +77,21 @@ export function RadarMap({
   const setHeatmapWindow = useHistory((s) => s.setHeatmapWindow)
   const allTrailsOn = useHistory((s) => s.allTrailsOn)
   const setAllTrailsOn = useHistory((s) => s.setAllTrailsOn)
+  const globalOn = useHistory((s) => s.globalOn)
+  const setGlobalOn = useHistory((s) => s.setGlobalOn)
   const historyHex = useHistory((s) => s.historyHex)
+
+  // Global-context overlay from adsb.lol. Pulls every 8s when toggled on so
+  // we don't pound their API; the backend caches for 5s and dedups against
+  // our own live registry. Off by default, opt-in via the [GBL] map control.
+  const { data: globalData } = useQuery({
+    queryKey: ['aircraft-global', 200],
+    queryFn: () => api.aircraftGlobal(200),
+    enabled: globalOn,
+    refetchInterval: globalOn ? 8_000 : false,
+    staleTime: 5_000,
+  })
+  const globalAircraft = globalOn ? globalData?.aircraft ?? [] : []
 
   // Selected aircraft's 5-min trail — shares TanStack Query cache with AircraftDetail.
   // Refetch every 3s so the trail keeps growing as the aircraft moves; otherwise
@@ -522,6 +537,15 @@ export function RadarMap({
         layers={layers as never[]}
         style={{ background: '#05080A', filter: 'brightness(1.6) contrast(1.05)' }}
       />
+      {/* Global-context overlay sits BELOW the primary markers so our own
+       *  catches always win on z-stacking when they overlap. */}
+      {globalOn && (
+        <GlobalMarkers
+          aircraft={globalAircraft}
+          viewport={viewport}
+          interacting={interacting}
+        />
+      )}
       <AircraftMarkers
         aircraft={aircraft}
         viewport={viewport}
@@ -579,6 +603,17 @@ export function RadarMap({
           active={allTrailsOn}
         >
           ≡
+        </MapButton>
+        <MapButton
+          onClick={() => setGlobalOn(!globalOn)}
+          title={
+            globalOn
+              ? `Hide global context (${globalAircraft.length} faded aircraft from adsb.lol within 200nm)`
+              : 'Show ambient traffic from adsb.lol within 200nm of station'
+          }
+          active={globalOn}
+        >
+          🌐
         </MapButton>
       </div>
 

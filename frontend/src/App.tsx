@@ -4,6 +4,7 @@ import { Shell } from '@/components/layout/Shell'
 import { Dashboard } from '@/routes/Dashboard'
 import { Catalog } from '@/routes/Catalog'
 import { Watchlist } from '@/routes/Watchlist'
+import { Airports } from '@/routes/Airports'
 import { Replay } from '@/routes/Replay'
 import { Stats } from '@/routes/Stats'
 import { Feeds } from '@/routes/Feeds'
@@ -27,6 +28,7 @@ export function App(): React.ReactElement {
             <Route index element={<Dashboard />} />
             <Route path="catalog" element={<Catalog />} />
             <Route path="watchlist" element={<Watchlist />} />
+            <Route path="airports" element={<Airports />} />
             <Route path="replay" element={<Replay />} />
             <Route path="stats" element={<Stats />} />
             <Route path="feeds" element={<Feeds />} />
