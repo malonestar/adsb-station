@@ -34,7 +34,7 @@ export const GlobalMarkers = memo(function GlobalMarkers({
         'absolute inset-0 pointer-events-none z-[4]',
         interacting && 'aircraft-interacting',
       )}
-      style={{ opacity: 0.45 }}
+      style={{ opacity: 0.6 }}
     >
       {aircraft.map((a) => {
         const [x, y] = viewport.project([a.lon, a.lat])
