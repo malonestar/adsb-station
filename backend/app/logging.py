@@ -15,6 +15,14 @@ def configure_logging(level: str = "INFO", json: bool = True) -> None:
         level=getattr(logging, level.upper(), logging.INFO),
     )
 
+    # Silence chatty third-party loggers. httpx's INFO log format embeds the
+    # full request URL in the line — including secrets in path segments
+    # (Telegram bot token: /bot<TOKEN>/getUpdates). At ~1 poll/sec to readsb
+    # this also dominates log volume and stdout I/O. WARNING is the right
+    # level for these. Re-raise to INFO via env if debugging is needed.
+    for noisy in ("httpx", "httpcore", "urllib3"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+
     processors: list = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
