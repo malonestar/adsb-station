@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from datetime import UTC, datetime, timedelta
 from time import monotonic
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from app.alerts.watchlist import watchlist
@@ -208,6 +211,75 @@ async def get_catalog(
         category=category,
         sort=sort,
         sort_dir=sort_dir,
+    )
+
+
+@router.get("/catalog/csv")
+async def get_catalog_csv(
+    search: str | None = None,
+    category: str = "all",
+    sort: str = "last_seen",
+    sort_dir: str = "desc",
+) -> Response:
+    """CSV export of the catalog with the same filter/sort semantics as /catalog.
+
+    No pagination — returns every row matching the filter (capped at 100k as a
+    sanity bound; actual catalog never approaches that). Streams as text/csv
+    with a Content-Disposition that prompts a download in the browser.
+    """
+    result = await hq.catalog(
+        limit=100_000,
+        offset=0,
+        search=search,
+        category=category,
+        sort=sort,
+        sort_dir=sort_dir,
+    )
+    rows = result["rows"]
+
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator="\n")
+    writer.writerow(
+        [
+            "hex",
+            "registration",
+            "type_code",
+            "operator",
+            "first_seen",
+            "last_seen",
+            "seen_count",
+            "max_alt_ft",
+            "max_speed_kt",
+            "min_distance_nm",
+            "is_military",
+            "is_interesting",
+            "photo_url",
+        ]
+    )
+    for r in rows:
+        writer.writerow(
+            [
+                r["hex"],
+                r["registration"] or "",
+                r["type_code"] or "",
+                r["operator"] or "",
+                r["first_seen"] or "",
+                r["last_seen"] or "",
+                r["seen_count"],
+                r["max_alt_ft"] if r["max_alt_ft"] is not None else "",
+                r["max_speed_kt"] if r["max_speed_kt"] is not None else "",
+                f"{r['min_distance_nm']:.2f}" if r["min_distance_nm"] is not None else "",
+                "true" if r["is_military"] else "false",
+                "true" if r["is_interesting"] else "false",
+                r["photo_url"] or "",
+            ]
+        )
+
+    filename = f"catalog-{datetime.now(UTC).strftime('%Y%m%d-%H%M')}.csv"
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useState } from 'react'
 import { Panel } from '@/components/chrome/Panel'
 import { Button } from '@/components/chrome/Button'
 import { DataCell } from '@/components/chrome/DataCell'
 import { SectionHeader } from '@/components/chrome/SectionHeader'
+import { PhotoLightbox } from '@/components/chrome/PhotoLightbox'
 import { useAircraft } from '@/store/aircraft'
 import { useSelection } from '@/store/selection'
 import { useHistory } from '@/store/history'
@@ -113,6 +115,7 @@ export function AircraftDetail(): React.ReactElement {
   const followSelection = useSelection((s) => s.followSelection)
   const toggleFollow = useSelection((s) => s.toggleFollow)
   const tracking = followSelection && Boolean(hex)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   const { data: route } = useQuery({
     queryKey: ['route', hex],
@@ -154,20 +157,22 @@ export function AircraftDetail(): React.ReactElement {
             active
             className="h-full"
           >
-            {/* Photo — 1px horizontal inset so the active-panel cyan glow stays visible */}
+            {/* Photo — 1px horizontal inset so the active-panel cyan glow stays visible.
+                Click opens a fullscreen lightbox with a "view source" link to the
+                photographer's planespotters page. */}
             {(detail?.catalog as { photo_url?: string } | null)?.photo_url && (
-              <a
-                href={((detail?.catalog as { photo_link?: string })?.photo_link) ?? '#'}
-                target="_blank"
-                rel="noreferrer"
-                className="block px-px"
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(true)}
+                className="block px-px w-full cursor-zoom-in"
+                aria-label="Enlarge photo"
               >
                 <img
                   src={(detail!.catalog as { photo_url: string }).photo_url}
                   alt={hex}
                   className="w-full aspect-[16/9] object-cover border-b border-stroke-hair"
                 />
-              </a>
+              </button>
             )}
 
             <div className="p-3 space-y-3">
@@ -277,6 +282,20 @@ export function AircraftDetail(): React.ReactElement {
             </div>
           </Panel>
         </motion.div>
+      )}
+      {lightboxOpen && (detail?.catalog as { photo_url?: string } | null)?.photo_url && (
+        <PhotoLightbox
+          imageUrl={(detail!.catalog as { photo_url: string }).photo_url}
+          caption={[
+            live?.flight?.trim() || (detail?.catalog as { registration?: string } | null)?.registration || hex?.toUpperCase(),
+            (detail?.catalog as { type_code?: string } | null)?.type_code,
+            (detail?.catalog as { operator?: string } | null)?.operator,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+          sourceUrl={(detail?.catalog as { photo_link?: string } | null)?.photo_link}
+          onClose={() => setLightboxOpen(false)}
+        />
       )}
     </AnimatePresence>
   )

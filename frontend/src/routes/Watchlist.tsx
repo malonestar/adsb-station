@@ -6,6 +6,7 @@ import { useWatchlistMutations } from '@/lib/watchlist'
 import { fmtAge, fmtAltRaw, fmtDistanceNm } from '@/lib/format'
 import { SectionHeader } from '@/components/chrome/SectionHeader'
 import { Button } from '@/components/chrome/Button'
+import { PhotoLightbox } from '@/components/chrome/PhotoLightbox'
 import { useSelection } from '@/store/selection'
 import { useNavigate } from 'react-router'
 import type { WatchlistDetailItem } from '@/types/api'
@@ -59,7 +60,18 @@ export function Watchlist(): React.ReactElement {
 
       {addOpen && <AddHexModal onClose={() => setAddOpen(false)} />}
       {lightboxItem && lightboxItem.catalog?.photo_url && (
-        <PhotoLightbox item={lightboxItem} onClose={() => setLightboxItem(null)} />
+        <PhotoLightbox
+          imageUrl={lightboxItem.catalog.photo_url}
+          caption={[
+            lightboxItem.catalog.registration ?? lightboxItem.value.toUpperCase(),
+            lightboxItem.catalog.type_code,
+            lightboxItem.catalog.operator,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+          sourceUrl={lightboxItem.catalog.photo_link}
+          onClose={() => setLightboxItem(null)}
+        />
       )}
     </div>
   )
@@ -272,40 +284,3 @@ function AddHexModal({ onClose }: { onClose: () => void }): React.ReactElement {
   )
 }
 
-function PhotoLightbox({
-  item,
-  onClose,
-}: {
-  item: WatchlistDetailItem
-  onClose: () => void
-}): React.ReactElement {
-  const cat = item.catalog!
-  return (
-    <div
-      className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 cursor-zoom-out"
-      onClick={onClose}
-    >
-      <div className="max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
-        <img
-          src={cat.photo_url!}
-          alt={item.value}
-          className="w-full max-h-[80vh] object-contain"
-        />
-        <div className="font-mono text-xs text-text-mid mt-2 flex justify-between">
-          <span>
-            {cat.registration ?? item.value.toUpperCase()} · {cat.type_code ?? ''} ·{' '}
-            {cat.operator ?? ''}
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-text-mid hover:text-efis-cyan"
-            aria-label="Close"
-          >
-            ✕ CLOSE
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}

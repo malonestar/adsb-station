@@ -1,18 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router'
 import { useAircraft } from '@/store/aircraft'
 import { useAlerts } from '@/store/alerts'
 import { useStats } from '@/store/stats'
+import { useWatchlist } from '@/lib/watchlist'
 import { clsx } from 'clsx'
 
-const ROUTES: { to: string; label: string }[] = [
-  { to: '/', label: 'RADAR' },
-  { to: '/catalog', label: 'CATALOG' },
-  { to: '/watchlist', label: 'WATCHLIST' },
-  { to: '/stats', label: 'STATS' },
-  { to: '/feeds', label: 'FEEDS' },
-  { to: '/alerts', label: 'ALERTS' },
-  { to: '/settings', label: 'CFG' },
+const ROUTES: { to: string; label: string; key: 'radar' | 'catalog' | 'watchlist' | 'stats' | 'feeds' | 'alerts' | 'cfg' }[] = [
+  { to: '/', label: 'RADAR', key: 'radar' },
+  { to: '/catalog', label: 'CATALOG', key: 'catalog' },
+  { to: '/watchlist', label: 'WATCHLIST', key: 'watchlist' },
+  { to: '/stats', label: 'STATS', key: 'stats' },
+  { to: '/feeds', label: 'FEEDS', key: 'feeds' },
+  { to: '/alerts', label: 'ALERTS', key: 'alerts' },
+  { to: '/settings', label: 'CFG', key: 'cfg' },
 ]
 
 export function TopBar({
@@ -25,6 +26,26 @@ export function TopBar({
   const total = useAircraft((s) => Object.keys(s.byHex).length)
   const alerts = useAlerts((s) => s.active.size)
   const max = useStats((s) => s.current?.max_range_nm_today ?? 0)
+
+  // Watchlist live-count badge: how many hex-kind watchlist entries are
+  // currently in range. Uses the existing watchlist query (TanStack Query
+  // cache) + an indexed lookup over the live aircraft registry.
+  const watchlistData = useWatchlist().data
+  const watchlistHexes = useMemo(() => {
+    const out = new Set<string>()
+    for (const e of watchlistData?.entries ?? []) {
+      if (e.kind === 'hex') out.add(e.value.toLowerCase())
+    }
+    return out
+  }, [watchlistData])
+  const liveWatchlistCount = useAircraft((s) => {
+    if (watchlistHexes.size === 0) return 0
+    let n = 0
+    for (const h of Object.keys(s.byHex)) {
+      if (watchlistHexes.has(h)) n++
+    }
+    return n
+  })
 
   return (
     <header
@@ -51,7 +72,7 @@ export function TopBar({
             end={r.to === '/'}
             className={({ isActive }) =>
               clsx(
-                'h-full px-3 flex items-center uppercase tracking-wider text-[11px] border-b-2 shrink-0',
+                'h-full px-3 flex items-center gap-1.5 uppercase tracking-wider text-[11px] border-b-2 shrink-0',
                 isActive
                   ? 'text-efis-cyan border-efis-cyan bg-bg-0'
                   : 'text-text-mid border-transparent hover:text-text-hi',
@@ -59,6 +80,14 @@ export function TopBar({
             }
           >
             {r.label}
+            {r.key === 'watchlist' && liveWatchlistCount > 0 && (
+              <span
+                className="font-mono text-[9px] px-1.5 py-0.5 bg-efis-amber/20 border border-efis-amber text-efis-amber rounded-sm"
+                title={`${liveWatchlistCount} watchlist aircraft currently in range`}
+              >
+                {liveWatchlistCount} LIVE
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

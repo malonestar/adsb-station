@@ -94,11 +94,33 @@ export function Catalog(): React.ReactElement {
     <div className="h-full overflow-hidden flex flex-col p-4">
       <section className="bg-bg-1 border border-stroke-hair rounded-[2px] flex flex-col flex-1 min-h-0">
         {/* Header row */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-stroke-hair flex-shrink-0">
+        <div className="flex items-center justify-between gap-3 px-3 py-2 border-b border-stroke-hair flex-shrink-0">
           <SectionHeader>CATALOG</SectionHeader>
-          <span className="font-mono text-[11px] text-text-low">
-            {isFetching && rows.length > 0 ? 'updating…' : `${total} aircraft`}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-[11px] text-text-low">
+              {isFetching && rows.length > 0 ? 'updating…' : `${total} aircraft`}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const params = new URLSearchParams({
+                  category,
+                  sort,
+                  sort_dir: sortDir,
+                  ...(search ? { search } : {}),
+                })
+                // Trigger a Blob download by hitting the CSV endpoint as a
+                // standard navigation — the Content-Disposition header
+                // makes the browser save the file.
+                window.location.href = `/api/catalog/csv?${params.toString()}`
+              }}
+              title={`Download CSV of all ${total} matching aircraft`}
+              disabled={total === 0}
+            >
+              EXPORT CSV
+            </Button>
+          </div>
         </div>
 
         {/* Search + category chips */}
