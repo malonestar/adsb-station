@@ -36,7 +36,7 @@ export function Airports(): React.ReactElement {
   const aircraft = useAircraft(useShallow(selectAircraftWithPosition))
 
   const { approaching, departing } = useMemo(
-    () => bucketTraffic(aircraft, airport),
+    () => bucketTraffic(aircraft, airport, AIRPORTS),
     [aircraft, airport],
   )
 
@@ -101,20 +101,37 @@ export function Airports(): React.ReactElement {
 function bucketTraffic(
   aircraft: AircraftState[],
   airport: Airport,
+  allAirports: Airport[],
 ): { approaching: Movement[]; departing: Movement[] } {
   const approaching: Movement[] = []
   const departing: Movement[] = []
   for (const a of aircraft) {
     if (a.lat == null || a.lon == null) continue
-    const distance_nm = haversineNm(airport.lat, airport.lon, a.lat, a.lon)
-    if (distance_nm > RADIUS_NM) continue
+
+    // Assign this aircraft to its CLOSEST airport in our list. Without this,
+    // KDEN/KAPA/KBKF/KFTG are all within ~17 nm of each other, so an aircraft
+    // over downtown Denver shows up on every board with the 30 nm radius.
+    // This way each aircraft appears on at most one board — the one it'd
+    // most plausibly be heading to / coming from.
+    let closest = airport
+    let closestDist = haversineNm(airport.lat, airport.lon, a.lat, a.lon)
+    for (const ap of allAirports) {
+      const d = haversineNm(ap.lat, ap.lon, a.lat, a.lon)
+      if (d < closestDist) {
+        closest = ap
+        closestDist = d
+      }
+    }
+    if (closest.icao !== airport.icao) continue
+    if (closestDist > RADIUS_NM) continue
+
     const agl_ft = a.alt_baro != null ? a.alt_baro - airport.elev_ft : null
 
     const m: Movement = {
       hex: a.hex,
       callsign: a.flight?.trim() || a.registration?.trim() || a.hex.toUpperCase(),
       state: a,
-      distance_nm,
+      distance_nm: closestDist,
       agl_ft,
       origin_icao: null,
       destination_icao: null,
