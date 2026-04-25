@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 
 from app.db.models import Watchlist as WatchlistRow
 from app.db.session import session_scope
@@ -34,15 +34,27 @@ class WatchlistStore:
         async with session_scope() as s:
             return list((await s.execute(select(WatchlistRow))).scalars().all())
 
-    async def add(self, kind: str, value: str, label: str | None = None) -> WatchlistRow:
+    async def add(
+        self,
+        kind: str,
+        value: str,
+        label: str | None = None,
+        notify: bool | None = None,
+    ) -> WatchlistRow:
         kind = kind.lower()
         if kind not in {"hex", "reg", "type", "operator"}:
             raise ValueError(f"unknown watchlist kind: {kind}")
+        # Kind-aware default for notify when caller doesn't specify: hex entries
+        # are deliberate per-aircraft picks (notify on); reg/type/operator are
+        # high-volume matchers that default to passive.
+        if notify is None:
+            notify = kind == "hex"
         async with session_scope() as s:
             row = WatchlistRow(
                 kind=kind,
                 value=value,
                 label=label,
+                notify=notify,
                 created_at=datetime.now(UTC),
             )
             s.add(row)
@@ -58,6 +70,17 @@ class WatchlistStore:
         if deleted:
             await self.refresh()
         return bool(deleted)
+
+    async def set_notify(self, entry_id: int, notify: bool) -> WatchlistRow | None:
+        async with session_scope() as s:
+            r = await s.execute(
+                update(WatchlistRow).where(WatchlistRow.id == entry_id).values(notify=notify)
+            )
+            if not r.rowcount:
+                return None
+            row = await s.get(WatchlistRow, entry_id)
+        await self.refresh()
+        return row
 
     def match(self, kind: str, value: str | None) -> WatchlistRow | None:
         if not value:

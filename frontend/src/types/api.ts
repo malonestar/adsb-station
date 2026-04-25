@@ -155,6 +155,7 @@ export interface WatchlistEntry {
   kind: 'hex' | 'reg' | 'type' | 'operator'
   value: string
   label: string | null
+  notify: boolean
   created_at?: string
 }
 
@@ -163,6 +164,7 @@ export interface WatchlistDetailItem {
   kind: 'hex' | 'reg' | 'type' | 'operator'
   value: string
   label: string | null
+  notify: boolean
   created_at: string
   live: boolean
   catalog: {

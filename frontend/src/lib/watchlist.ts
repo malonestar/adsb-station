@@ -23,10 +23,13 @@ export function useWatchlistEntryFor(hex: string | null | undefined) {
 
 export function useWatchlistMutations() {
   const qc = useQueryClient()
-  const invalidate = () => qc.invalidateQueries({ queryKey: WATCHLIST_KEY })
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: WATCHLIST_KEY })
+    qc.invalidateQueries({ queryKey: ['watchlist-details'] })
+  }
 
   const add = useMutation({
-    mutationFn: (entry: { kind: string; value: string; label?: string }) =>
+    mutationFn: (entry: { kind: string; value: string; label?: string; notify?: boolean }) =>
       api.watchlistAdd(entry),
     onSuccess: invalidate,
   })
@@ -36,7 +39,13 @@ export function useWatchlistMutations() {
     onSuccess: invalidate,
   })
 
-  return { add, remove }
+  const setNotify = useMutation({
+    mutationFn: ({ id, notify }: { id: number; notify: boolean }) =>
+      api.watchlistSetNotify(id, notify),
+    onSuccess: invalidate,
+  })
+
+  return { add, remove, setNotify }
 }
 
 export function useToggleWatch(hex: string | null | undefined, label?: string) {

@@ -73,11 +73,17 @@ export const api = {
 
   watchlistList: () => j<{ entries: WatchlistEntry[] }>('/watchlist'),
   watchlistDetails: () => j<{ items: WatchlistDetailItem[] }>('/watchlist/details'),
-  watchlistAdd: (entry: { kind: string; value: string; label?: string }) =>
+  watchlistAdd: (entry: { kind: string; value: string; label?: string; notify?: boolean }) =>
     j<WatchlistEntry>('/watchlist', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(entry),
+    }),
+  watchlistSetNotify: (id: number, notify: boolean) =>
+    j<WatchlistEntry>(`/watchlist/${id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ notify }),
     }),
   watchlistRemove: (id: number) =>
     j<{ deleted: boolean }>(`/watchlist/${id}`, { method: 'DELETE' }),

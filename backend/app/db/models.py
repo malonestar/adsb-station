@@ -136,7 +136,14 @@ class Alert(Base):
 
 
 class Watchlist(Base):
-    """User-defined alerts."""
+    """User-defined watch entries.
+
+    `notify=True` means matches trigger Telegram/Discord notifications via the
+    alert pipeline (the historical default for hex-kind entries). `notify=False`
+    means matches still flag aircraft on the watchlist tab and surface in alert
+    history, but no outbound push — the right default for high-volume kinds
+    (operator/type) where every match would flood notifications.
+    """
 
     __tablename__ = "watchlist"
 
@@ -144,6 +151,7 @@ class Watchlist(Base):
     kind: Mapped[str] = mapped_column(String(16))  # hex|reg|type|operator
     value: Mapped[str] = mapped_column(String(128), index=True)
     label: Mapped[str | None] = mapped_column(String(128))
+    notify: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 

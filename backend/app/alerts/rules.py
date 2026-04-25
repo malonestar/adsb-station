@@ -130,12 +130,20 @@ class AlertEvaluator:
             kinds.append("interesting")
         if state.alt_baro is not None and state.alt_baro > settings.alert_high_altitude_ft:
             kinds.append("high_altitude")
-        # Watchlist match (hex, registration, type, operator)
-        if watchlist.match("hex", state.hex):
-            kinds.append("watchlist")
-        elif state.registration and watchlist.match("reg", state.registration):
-            kinds.append("watchlist")
-        elif state.type_code and watchlist.match("type", state.type_code):
+        # Watchlist match (hex, registration, type). Only fires the alert
+        # pipeline when the matched entry has notify=True; passive entries
+        # (notify=False) still flag aircraft on the watchlist tab via the
+        # /api/watchlist/details intersection but don't write alerts or push
+        # notifications.
+        # Operator-kind entries are not matched here — operator data lives
+        # in the catalog (enrichment-time), not in AircraftState. Operator
+        # entries are passive-only in V1; see the +ADD modal warning.
+        wl_match = (
+            watchlist.match("hex", state.hex)
+            or (state.registration and watchlist.match("reg", state.registration))
+            or (state.type_code and watchlist.match("type", state.type_code))
+        )
+        if wl_match and wl_match.notify:
             kinds.append("watchlist")
         return kinds
 

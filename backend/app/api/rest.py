@@ -396,8 +396,14 @@ async def watchlist_list() -> dict[str, Any]:
     rows = await watchlist.all()
     return {
         "entries": [
-            {"id": r.id, "kind": r.kind, "value": r.value, "label": r.label,
-             "created_at": r.created_at.isoformat()}
+            {
+                "id": r.id,
+                "kind": r.kind,
+                "value": r.value,
+                "label": r.label,
+                "notify": r.notify,
+                "created_at": r.created_at.isoformat(),
+            }
             for r in rows
         ]
     }
@@ -408,9 +414,13 @@ async def watchlist_add(body: dict[str, Any]) -> dict[str, Any]:
     kind = body.get("kind")
     value = body.get("value")
     label = body.get("label")
+    # Honor an explicit notify flag if the caller sent one; otherwise let the
+    # store apply the kind-aware default (hex=True, others=False).
+    notify_raw = body.get("notify")
+    notify: bool | None = bool(notify_raw) if notify_raw is not None else None
     if not kind or not value:
         raise HTTPException(status_code=400, detail="kind and value required")
-    row = await watchlist.add(kind=kind, value=value, label=label)
+    row = await watchlist.add(kind=kind, value=value, label=label, notify=notify)
     # Cold-enrich hex entries whose aircraft we've never seen — fills in
     # registration / type / operator / photo so the watchlist tab is
     # immediately useful even before the aircraft transits range.
@@ -419,7 +429,24 @@ async def watchlist_add(body: dict[str, Any]) -> dict[str, Any]:
             existing = await s.get(AircraftCatalog, value.lower())
         if existing is None:
             await enrichment_coordinator.enrich_cold(value)
-    return {"id": row.id, "kind": row.kind, "value": row.value, "label": row.label}
+    return {
+        "id": row.id, "kind": row.kind, "value": row.value,
+        "label": row.label, "notify": row.notify,
+    }
+
+
+@router.patch("/watchlist/{entry_id}")
+async def watchlist_update(entry_id: int, body: dict[str, Any]) -> dict[str, Any]:
+    """Toggle the notify flag on an existing entry (no remove + re-add needed)."""
+    if "notify" not in body:
+        raise HTTPException(status_code=400, detail="notify field required")
+    row = await watchlist.set_notify(entry_id, bool(body["notify"]))
+    if row is None:
+        raise HTTPException(status_code=404, detail="not found")
+    return {
+        "id": row.id, "kind": row.kind, "value": row.value,
+        "label": row.label, "notify": row.notify,
+    }
 
 
 @router.delete("/watchlist/{entry_id}")
@@ -457,6 +484,7 @@ async def watchlist_details(request: Request) -> dict[str, Any]:
             "kind": e.kind,
             "value": e.value,
             "label": e.label,
+            "notify": e.notify,
             "created_at": e.created_at.isoformat(),
             "live": False,
             "catalog": None,
