@@ -7,7 +7,7 @@ from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -124,6 +124,90 @@ async def backfill_max_range_all() -> None:
     log.info("backfill_max_range_complete", days=len(dates))
 
 
+# Heatmap pre-aggregation lives at this grid; other grid values fall back
+# to the live query path (see app/history/queries.py::heatmap).
+HEATMAP_ROLLUP_GRID = 0.02
+
+
+async def rollup_position_cells_hour(hour_start: datetime) -> int:
+    """Aggregate one hour of positions into the position_cells_hourly table.
+
+    Idempotent — deletes any prior data for this bucket first. Single
+    INSERT...SELECT...GROUP BY does the heavy lifting in SQLite (no
+    Python-side row materialization).
+    """
+    hour_start = hour_start.replace(minute=0, second=0, microsecond=0)
+    hour_end = hour_start + timedelta(hours=1)
+    bucket = hour_start.strftime("%Y-%m-%dT%H")
+    async with session_scope() as s:
+        await s.execute(
+            text("DELETE FROM position_cells_hourly WHERE hour_bucket = :b"),
+            {"b": bucket},
+        )
+        result = await s.execute(
+            text(
+                """
+                INSERT INTO position_cells_hourly (hour_bucket, lat_cell, lon_cell, count)
+                SELECT :b,
+                       ROUND(lat / :grid) * :grid,
+                       ROUND(lon / :grid) * :grid,
+                       COUNT(*)
+                FROM positions
+                WHERE ts >= :start AND ts < :end
+                GROUP BY ROUND(lat / :grid) * :grid, ROUND(lon / :grid) * :grid
+                """
+            ),
+            {
+                "b": bucket,
+                "grid": HEATMAP_ROLLUP_GRID,
+                "start": hour_start,
+                "end": hour_end,
+            },
+        )
+        inserted = result.rowcount or 0
+    return inserted
+
+
+async def rollup_previous_hour() -> None:
+    """Cron entrypoint — rolls up the hour that just ended."""
+    now = datetime.now(UTC)
+    target = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+    n = await rollup_position_cells_hour(target)
+    log.info("position_cells_rollup_hour", bucket=target.isoformat(), cells=n)
+
+
+async def backfill_position_cells_all() -> None:
+    """One-shot: rebuild the rollup from every distinct hour in positions.
+
+    Uses raw SQL (`strftime`) to enumerate hours since SQLAlchemy `func.date_trunc`
+    isn't on SQLite. Iterates oldest → newest so partial backfills resume sanely.
+    """
+    async with session_scope() as s:
+        rows = (
+            await s.execute(
+                text(
+                    "SELECT DISTINCT strftime('%Y-%m-%dT%H', ts) AS h "
+                    "FROM positions ORDER BY h"
+                )
+            )
+        ).all()
+    hours = [r[0] for r in rows]
+    log.info("backfill_position_cells_start", hours=len(hours))
+    for i, h in enumerate(hours):
+        # Parse 'YYYY-MM-DDTHH' → datetime
+        hour_start = datetime.strptime(h, "%Y-%m-%dT%H").replace(tzinfo=UTC)
+        n = await rollup_position_cells_hour(hour_start)
+        if (i + 1) % 24 == 0:
+            log.info(
+                "backfill_position_cells_progress",
+                done=i + 1,
+                total=len(hours),
+                last_bucket=h,
+                last_cells=n,
+            )
+    log.info("backfill_position_cells_complete", hours=len(hours))
+
+
 async def prune_old_positions() -> None:
     """Enforce retention policy on the positions table."""
     cutoff = datetime.now(UTC) - timedelta(days=settings.position_retention_days)
@@ -160,5 +244,12 @@ def configure_jobs() -> None:
         purge_enrichment,
         CronTrigger(hour="*/6", minute=30, timezone="UTC"),
         id="purge_enrichment",
+        replace_existing=True,
+    )
+    # Heatmap rollup — every hour at :05 covers the previous full hour.
+    scheduler.add_job(
+        rollup_previous_hour,
+        CronTrigger(minute=5, timezone="UTC"),
+        id="position_cells_hourly",
         replace_existing=True,
     )

@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router'
 import { clsx } from 'clsx'
 import { api } from '@/lib/api'
 import { SectionHeader } from '@/components/chrome/SectionHeader'
 import { Button } from '@/components/chrome/Button'
+import { useSelection } from '@/store/selection'
+import { useAircraft } from '@/store/aircraft'
 import { fmtAge, fmtAltRaw, fmtDistanceNm, fmtSpeedKt } from '@/lib/format'
 import type { CatalogCategory, CatalogSort } from '@/types/api'
 
@@ -65,6 +68,15 @@ export function Catalog(): React.ReactElement {
 
   const total = data?.total ?? 0
   const rows = data?.rows ?? []
+  const select = useSelection((s) => s.select)
+  const liveByHex = useAircraft((s) => s.byHex)
+  const navigate = useNavigate()
+
+  const onRowClick = (hex: string) => {
+    const isLive = Boolean(liveByHex[hex.toLowerCase()])
+    select(hex.toLowerCase(), { focus: isLive })
+    navigate('/')
+  }
 
   // Click a header: toggle direction if same column, otherwise set column with sensible default dir.
   const onSort = (col: CatalogSort): void => {
@@ -135,8 +147,18 @@ export function Catalog(): React.ReactElement {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.hex} className="border-b border-stroke-hair hover:bg-bg-2">
+              {rows.map((r) => {
+                const isLive = Boolean(liveByHex[r.hex.toLowerCase()])
+                return (
+                <tr
+                  key={r.hex}
+                  onClick={() => onRowClick(r.hex)}
+                  className={clsx(
+                    'border-b border-stroke-hair cursor-pointer transition-colors',
+                    isLive ? 'hover:bg-efis-phos/10' : 'hover:bg-bg-2',
+                  )}
+                  title={isLive ? 'Click to track on radar' : 'Click to open detail panel'}
+                >
                   <td className="px-3 py-2">
                     {r.photo_thumb_url ? (
                       <img src={r.photo_thumb_url} alt="" className="h-8 w-14 object-cover rounded-sm" />
@@ -144,7 +166,15 @@ export function Catalog(): React.ReactElement {
                       <div className="h-8 w-14 bg-bg-2 border border-stroke-hair" />
                     )}
                   </td>
-                  <td className="px-3 py-2 text-text-mid">{r.hex.toUpperCase()}</td>
+                  <td className="px-3 py-2 text-text-mid">
+                    {isLive && (
+                      <span
+                        className="inline-block w-1.5 h-1.5 rounded-full bg-efis-phos animate-pulse mr-1.5 align-middle"
+                        title="Currently live"
+                      />
+                    )}
+                    {r.hex.toUpperCase()}
+                  </td>
                   <td className="px-3 py-2 text-efis-white">{r.registration ?? '—'}</td>
                   <td
                     className={clsx(
@@ -172,7 +202,8 @@ export function Catalog(): React.ReactElement {
                   </td>
                   <td className="px-3 py-2 text-text-low tabular-nums">{fmtAge(r.last_seen)}</td>
                 </tr>
-              ))}
+                )
+              })}
               {!rows.length && !isFetching && (
                 <tr>
                   <td colSpan={10} className="text-center py-8 text-text-low">

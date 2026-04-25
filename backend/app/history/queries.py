@@ -5,10 +5,17 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import and_, exists, func, or_, select
+from collections import defaultdict
+
+from sqlalchemy import and_, exists, func, or_, select, text
 
 from app.db.models import AircraftCatalog, Alert, Position, Watchlist
 from app.db.session import session_scope
+
+# Pre-aggregation grid used by the position_cells_hourly rollup. The rollup
+# fast-path is only consulted when the heatmap request asks for this same
+# grid; other values fall through to the live aggregation.
+_HEATMAP_ROLLUP_GRID = 0.02
 
 
 # Catalog sort — whitelist of (column expression, default direction) keyed by external name.
@@ -85,13 +92,61 @@ async def replay(
 
 
 async def heatmap(hours: int = 24, grid: float = 0.02) -> list[dict[str, Any]]:
-    cutoff = datetime.now(UTC) - timedelta(hours=hours)
+    """Heatmap aggregation. Routes through the rollup table for the default grid.
+
+    For the canonical grid=0.02° we read the pre-aggregated `position_cells_hourly`
+    table for any hour bucket that has been completed and rolled up, plus a live
+    aggregation over the trailing hour (which the cron hasn't summarized yet).
+    Any other grid value falls back to the live full-positions aggregation.
+    """
+    now = datetime.now(UTC)
+    cutoff = now - timedelta(hours=hours)
+
+    if grid != _HEATMAP_ROLLUP_GRID:
+        return await _heatmap_live(cutoff, grid=grid)
+
+    # Boundary: rollup covers fully-elapsed hours up to the start of the
+    # CURRENT hour. The current (partial) hour is never rolled up by the
+    # cron, so we always merge it from live positions.
+    current_hour_start = now.replace(minute=0, second=0, microsecond=0)
+    cutoff_bucket = cutoff.strftime("%Y-%m-%dT%H")
+
     async with session_scope() as s:
-        # Bucket each position to the nearest `grid`-degree cell (≈1.4 mi at lat 40°
-        # for grid=0.02) so the heatmap aggregates sparse samples into a visible
-        # density. NOTE: `.group_by(lat_expr, lon_expr)` must pass the expressions
-        # themselves — using string labels would match the raw Position.lat/lon
-        # columns instead and leave you with millions of near-unique points.
+        rollup_rows = (
+            await s.execute(
+                text(
+                    """
+                    SELECT lat_cell, lon_cell, SUM(count) AS n
+                    FROM position_cells_hourly
+                    WHERE hour_bucket >= :cutoff_bucket
+                    GROUP BY lat_cell, lon_cell
+                    """
+                ),
+                {"cutoff_bucket": cutoff_bucket},
+            )
+        ).all()
+
+    # Partial trailing hour — small live aggregation (typically <30s on a Pi).
+    live_rows = await _heatmap_live(current_hour_start, grid=grid)
+
+    merged: dict[tuple[float, float], int] = defaultdict(int)
+    for lat, lon, n in rollup_rows:
+        merged[(lat, lon)] += int(n)
+    for r in live_rows:
+        merged[(r["lat"], r["lon"])] += int(r["count"])
+    return [{"lat": lat, "lon": lon, "count": c} for (lat, lon), c in merged.items()]
+
+
+async def _heatmap_live(
+    cutoff: datetime, *, grid: float = _HEATMAP_ROLLUP_GRID
+) -> list[dict[str, Any]]:
+    """Aggregate from the live positions table (fallback / trailing-hour path).
+
+    NOTE: `.group_by(lat_expr, lon_expr)` must pass the expressions themselves —
+    using string labels would match the raw Position.lat/lon columns instead and
+    leave you with millions of near-unique points.
+    """
+    async with session_scope() as s:
         lat_expr = (func.round(Position.lat / grid) * grid).label("lat")
         lon_expr = (func.round(Position.lon / grid) * grid).label("lon")
         rows = (

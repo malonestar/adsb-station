@@ -50,6 +50,11 @@ export function RadarMap({
   const aircraft = useAircraft(useShallow(selectAircraftWithPosition))
   const selectedHex = useSelection((s) => s.selectedHex)
   const select = useSelection((s) => s.select)
+  const pendingFocusHex = useSelection((s) => s.pendingFocusHex)
+  const consumeFocus = useSelection((s) => s.consumeFocus)
+  const focusTarget = useAircraft((s) =>
+    pendingFocusHex ? s.byHex[pendingFocusHex] : null,
+  )
   const rangeRingsOn = useSettings((s) => s.rangeRingsOn)
   const sweepOn = useSettings((s) => s.sweepOn)
   const scanlinesOn = useSettings((s) => s.scanlinesOn)
@@ -183,6 +188,21 @@ export function RadarMap({
       })),
     [],
   )
+  // Catalog / Watchlist routes set pendingFocusHex when navigating into the
+  // dashboard so the radar can pan to the aircraft. Only fires once the
+  // aircraft is actually present in the live registry — if it never shows
+  // up (offline), the flag stays pending until something else clears it.
+  useEffect(() => {
+    if (!pendingFocusHex || focusTarget?.lat == null || focusTarget?.lon == null) return
+    setViewState((v) => ({
+      ...v,
+      latitude: focusTarget.lat as number,
+      longitude: focusTarget.lon as number,
+      zoom: Math.max(v.zoom, 9),
+    }))
+    consumeFocus()
+  }, [pendingFocusHex, focusTarget, consumeFocus])
+
   const recenter = useCallback(
     () =>
       setViewState({

@@ -101,6 +101,26 @@ class DailyAggregate(Base):
     top_aircraft_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
+class PositionCellHourly(Base):
+    """Pre-aggregated heatmap cells, populated hourly by app/stats/aggregates.py.
+
+    Lookups go through raw SQL (single INSERT...SELECT for the rollup, single
+    SELECT...GROUP BY for the heatmap query). The ORM model exists so
+    Base.metadata.create_all builds the table in tests, and so future ORM
+    consumers have typed access.
+    """
+
+    __tablename__ = "position_cells_hourly"
+
+    hour_bucket: Mapped[str] = mapped_column(String(13), primary_key=True)  # YYYY-MM-DDTHH
+    lat_cell: Mapped[float] = mapped_column(Float, primary_key=True)
+    lon_cell: Mapped[float] = mapped_column(Float, primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+Index("ix_pcells_hour", PositionCellHourly.hour_bucket)
+
+
 class Alert(Base):
     """Active and historical alerts."""
 

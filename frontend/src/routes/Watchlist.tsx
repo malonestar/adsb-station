@@ -90,7 +90,7 @@ function WatchCard({
 
   const onTrack = () => {
     if (item.live && item.kind === 'hex') {
-      select(item.value.toLowerCase())
+      select(item.value.toLowerCase(), { focus: true })
       navigate('/')
     }
   }
