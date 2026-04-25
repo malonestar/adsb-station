@@ -136,6 +136,9 @@ function bucketTraffic(
   return { approaching, departing }
 }
 
+// Shared column template — keep MovementRow's gridTemplateColumns in sync.
+const ROW_COLS = 'minmax(70px, 1fr) 60px 70px 70px 70px minmax(0, 1.4fr)'
+
 function Column({
   title,
   accent,
@@ -157,11 +160,26 @@ function Column({
       {rows.length === 0 ? (
         <div className="px-3 py-8 text-center font-mono text-[11px] text-text-low">{empty}</div>
       ) : (
-        <div>
-          {rows.map((m) => (
-            <MovementRow key={m.hex} m={m} showVs={showVs} />
-          ))}
-        </div>
+        <>
+          {/* Column headers — same grid template as the rows below so columns
+           *  line up under their labels. */}
+          <div
+            className="grid gap-2 items-center px-3 py-1.5 border-b border-stroke-hair font-mono text-[10px] text-text-low uppercase tracking-wider"
+            style={{ gridTemplateColumns: ROW_COLS }}
+          >
+            <span>Call</span>
+            <span>Type</span>
+            <span>Alt AGL</span>
+            {showVs ? <span>V/S</span> : <span />}
+            <span>Dist</span>
+            <span>Route · Speed</span>
+          </div>
+          <div>
+            {rows.map((m) => (
+              <MovementRow key={m.hex} m={m} showVs={showVs} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
@@ -198,7 +216,7 @@ function MovementRow({ m, showVs }: { m: Movement; showVs?: boolean }): React.Re
     <div
       onClick={onClick}
       className="grid gap-2 items-center px-3 py-2 border-b border-stroke-hair last:border-b-0 cursor-pointer hover:bg-bg-2"
-      style={{ gridTemplateColumns: 'minmax(70px, 1fr) 60px 70px 70px 70px minmax(0, 1.4fr)' }}
+      style={{ gridTemplateColumns: ROW_COLS }}
     >
       <span className="font-mono text-[12px] text-efis-white truncate">{m.callsign}</span>
       <span className="font-mono text-[10px] text-text-mid uppercase">
