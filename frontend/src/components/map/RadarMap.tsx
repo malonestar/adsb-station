@@ -78,14 +78,17 @@ export function RadarMap({
   const setAllTrailsOn = useHistory((s) => s.setAllTrailsOn)
   const historyHex = useHistory((s) => s.historyHex)
 
-  // Selected aircraft's 5-min trail — shares TanStack Query cache with AircraftDetail
+  // Selected aircraft's 5-min trail — shares TanStack Query cache with AircraftDetail.
+  // Refetch every 3s so the trail keeps growing as the aircraft moves; otherwise
+  // the query goes stale and the cyan tail freezes at click time.
   // (same queryKey), so no duplicate fetch.
   const { data: selectedDetail } = useQuery({
     queryKey: ['aircraft', selectedHex],
     queryFn: () =>
       selectedHex ? api.aircraftDetail(selectedHex) : Promise.resolve(null),
     enabled: Boolean(selectedHex),
-    staleTime: 30_000,
+    refetchInterval: 3_000,
+    staleTime: 2_500,
   })
 
   // Heatmap query + prefetching. Backend aggregations over the positions table

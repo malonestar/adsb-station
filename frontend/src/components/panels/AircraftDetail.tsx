@@ -104,7 +104,8 @@ export function AircraftDetail(): React.ReactElement {
     queryKey: ['aircraft', hex],
     queryFn: () => (hex ? api.aircraftDetail(hex) : Promise.resolve(null)),
     enabled: Boolean(hex),
-    staleTime: 30_000,
+    refetchInterval: 3_000,
+    staleTime: 2_500,
   })
 
   const watchLabel = live?.flight?.trim() || (detail?.catalog as { registration?: string } | null)?.registration || undefined
