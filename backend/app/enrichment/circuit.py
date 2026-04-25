@@ -27,8 +27,16 @@ class CircuitBreaker:
         reset_after_s: int | None = None,
     ) -> None:
         self.name = name
-        self.failure_threshold = failure_threshold or settings.cb_failure_threshold
-        self.reset_after = timedelta(seconds=reset_after_s or settings.cb_reset_after_s)
+        # `or` would treat 0 as "no value" (it's falsy) and silently swap in the
+        # settings default — making it impossible to pass a real zero. Use an
+        # explicit None check so callers can opt in to immediate-transition
+        # breakers (mainly tests).
+        self.failure_threshold = (
+            failure_threshold if failure_threshold is not None else settings.cb_failure_threshold
+        )
+        self.reset_after = timedelta(
+            seconds=reset_after_s if reset_after_s is not None else settings.cb_reset_after_s
+        )
         self._state = CircuitState.CLOSED
         self._fail_count = 0
         self._opened_at: datetime | None = None

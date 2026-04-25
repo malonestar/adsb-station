@@ -189,6 +189,30 @@ body {
   font-weight: 500;
 }
 
+/* Military / interesting overlay badges. Sit on the (non-rotating) parent
+ * so their orientation stays fixed while the body silhouette rotates with
+ * the aircraft heading. */
+.aircraft-overlay-military::after,
+.aircraft-overlay-interesting::after {
+  content: '';
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  top: -3px;
+  right: -3px;
+  border-radius: 50%;
+  pointer-events: none;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  /* Drop-shadow keeps the badge legible over light tile backgrounds. */
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+}
+.aircraft-overlay-military::after {
+  background-color: var(--color-efis-amber, #ffb800);
+}
+.aircraft-overlay-interesting::after {
+  background-color: var(--color-efis-violet, #9370db);
+}
+
 .aircraft-marker-emergency .aircraft-marker-label {
   opacity: 1;
   font-weight: 500;

@@ -19,7 +19,13 @@ def test_bearing_cardinal() -> None:
     assert 88 < b < 92
 
 
-def test_parse_aircraft_minimal() -> None:
+def test_parse_aircraft_minimal(monkeypatch) -> None:
+    # Pin station coords for a deterministic haversine result regardless of
+    # whatever lat/lon the deployed .env carries.
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "feeder_lat", 39.7)
+    monkeypatch.setattr(settings, "feeder_lon", -104.8)
     raw = {
         "hex": "a1b2c3",
         "flight": "UAL123  ",

@@ -50,6 +50,15 @@ export const AircraftMarkers = memo(function AircraftMarkers({
             ? [255, 255, 255]
             : altitudeColor(a.alt_baro)
         const color = `rgb(${r}, ${g}, ${b})`
+        // Overlay badges sit on the (non-rotating) parent so they keep their
+        // orientation as the aircraft turns. Mil takes precedence over int
+        // visually (military aircraft that ALSO have is_interesting=True only
+        // get the mil badge to avoid stacking).
+        const overlayClass = a.is_military
+          ? 'aircraft-overlay-military'
+          : a.is_interesting
+            ? 'aircraft-overlay-interesting'
+            : ''
         return (
           <div
             key={a.hex}
@@ -57,6 +66,7 @@ export const AircraftMarkers = memo(function AircraftMarkers({
               'aircraft-marker absolute top-0 left-0',
               isSelected && 'aircraft-marker-selected',
               a.is_emergency && 'aircraft-marker-emergency',
+              overlayClass,
             )}
             style={{
               transform: `translate3d(${x}px, ${y}px, 0)`,

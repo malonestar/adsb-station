@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 32 32" fill="currentColor">
+  <!-- Faint propeller disc at the nose — gives GA props a visual marker airliners lack -->
+  <circle cx="16" cy="5.5" r="3" opacity="0.35"/>
+  <!-- Straight-wing high-wing single (Cessna 172 / Piper-style top view) -->
+  <path d="M16 7.5 L17 8 L17 13 L26 16.5 L26 17.5 L17 17 L17 22 L19.5 24 L19.5 25 L16 24 L12.5 25 L12.5 24 L15 22 L15 17 L6 17.5 L6 16.5 L15 13 L15 8 Z"/>
+</svg>
