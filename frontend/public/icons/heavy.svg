@@ -1,3 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 32 32" fill="currentColor">
-  <path d="M16 1 L18 3 L18.3 10.5 L31 17.5 L31 19.5 L18.3 17.2 L18.1 22.5 L23 25.5 L23 27 L18 26 L16 25.5 L14 26 L9 27 L9 25.5 L13.9 22.5 L13.7 17.2 L1 19.5 L1 17.5 L13.7 10.5 L14 3 Z"/>
+  <!-- Wide-body airliner: extra-long swept wings + 4 visible engine pods -->
+  <!-- Fuselage -->
+  <path d="M16 0.5 L17.5 2 L17.5 11 L17.8 21.5 L20.8 25 L20.8 26.8 L16 25.8 L11.2 26.8 L11.2 25 L14.2 21.5 L14.5 11 L14.5 2 Z"/>
+  <!-- Long swept wings — extend to viewport edges -->
+  <path d="M14.5 10.5 L0 18 L0 19.7 L14.5 15.7 Z"/>
+  <path d="M17.5 10.5 L32 18 L32 19.7 L17.5 15.7 Z"/>
+  <!-- 4 engine pods on the wing leading edge -->
+  <rect x="3.5" y="15" width="1.4" height="3.6" rx="0.3"/>
+  <rect x="8.5" y="13.5" width="1.4" height="3.6" rx="0.3"/>
+  <rect x="22.1" y="13.5" width="1.4" height="3.6" rx="0.3"/>
+  <rect x="27.1" y="15" width="1.4" height="3.6" rx="0.3"/>
+  <!-- Horizontal stabilizer -->
+  <path d="M14.2 21.5 L10.5 24.5 L10.5 25.5 L14.2 23.5 Z"/>
+  <path d="M17.8 21.5 L21.5 24.5 L21.5 25.5 L17.8 23.5 Z"/>
 </svg>

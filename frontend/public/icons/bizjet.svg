@@ -1,4 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 32 32" fill="currentColor">
-  <!-- Compact swept-wing biz jet — narrower wingspan + smaller tail than the airliner silhouettes -->
-  <path d="M16 4.5 L17 5.5 L17.2 12 L25 16.5 L25 17.7 L17.2 16.5 L17.2 21.5 L20 24 L20 25 L16 24 L12 25 L12 24 L14.8 21.5 L14.8 16.5 L7 17.7 L7 16.5 L14.8 12 L15 5.5 Z"/>
+  <!-- Biz jet: compact, sharply swept wings, NO underwing engines (most have
+       rear-mounted ones), prominent T-tail at the rear -->
+  <!-- Fuselage -->
+  <path d="M16 3 L17 4 L17 12 L17.2 22 L19.5 24 L19.5 25 L16 24.2 L12.5 25 L12.5 24 L14.8 22 L15 12 L15 4 Z"/>
+  <!-- Compact sharply-swept wings -->
+  <path d="M15 12 L7 19 L7 20 L15 16 Z"/>
+  <path d="M17 12 L25 19 L25 20 L17 16 Z"/>
+  <!-- T-tail: horizontal stab perched ON TOP of vertical stab — distinctive biz-jet feature -->
+  <rect x="11.5" y="22.2" width="9" height="0.9" rx="0.3"/>
 </svg>

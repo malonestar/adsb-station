@@ -1,6 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 32 32" fill="currentColor">
-  <!-- Faint propeller disc at the nose — gives GA props a visual marker airliners lack -->
-  <circle cx="16" cy="5.5" r="3" opacity="0.35"/>
-  <!-- Straight-wing high-wing single (Cessna 172 / Piper-style top view) -->
-  <path d="M16 7.5 L17 8 L17 13 L26 16.5 L26 17.5 L17 17 L17 22 L19.5 24 L19.5 25 L16 24 L12.5 25 L12.5 24 L15 22 L15 17 L6 17.5 L6 16.5 L15 13 L15 8 Z"/>
+  <!-- GA single-engine prop: WIDE straight wings (the visual giveaway vs a
+       compact helicopter), small prop disc at the very front. Wings extend
+       almost the full viewport to read clearly at radar zoom. -->
+  <!-- Small prop disc -->
+  <circle cx="16" cy="3.5" r="2.2" opacity="0.5"/>
+  <!-- Slim fuselage -->
+  <rect x="15.2" y="5" width="1.6" height="18" rx="0.4"/>
+  <!-- Wide straight wings extending past the body — clearly "wings", not "blades" -->
+  <rect x="0.5" y="13.8" width="31" height="1.8" rx="0.4"/>
+  <!-- Tail empennage -->
+  <rect x="11" y="22.5" width="10" height="1.4" rx="0.4"/>
 </svg>
