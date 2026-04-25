@@ -168,13 +168,26 @@ class EnrichmentCoordinator:
             self._inflight_hex.discard(hex_lc)
 
     async def _enrich_route(self, hex_code: str, callsign: str) -> None:
+        # Use route_service (3-tier cascade) instead of single-source adsblol
+        # so results land in the route_cache table. Downstream consumers —
+        # airports board, /api/aircraft/{hex}/route, alerts payloads — all
+        # read from route_cache, so without this they only see route data
+        # for aircraft a user has manually clicked. With it, every callsign
+        # we observe gets its origin/destination resolved exactly once
+        # (cache hits afterward), populating the airport boards correctly.
+        from app.enrichment.route import route_service
+
         async with self._semaphore:
             try:
-                route = await adsblol.lookup_route(callsign)
-                if route:
+                route_info = await route_service.get_route(callsign)
+                if route_info is not None and route_info.source != "not_found":
                     await bus.publish(
                         "aircraft.enriched",
-                        {"hex": hex_code, "callsign": callsign, "route": route},
+                        {
+                            "hex": hex_code,
+                            "callsign": callsign,
+                            "route": route_info.to_dict(),
+                        },
                     )
             except Exception:  # noqa: BLE001
                 log.exception("enrich_route_failed", callsign=callsign)
