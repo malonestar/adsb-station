@@ -79,6 +79,8 @@ export function RadarMap({
   const setAllTrailsOn = useHistory((s) => s.setAllTrailsOn)
   const globalOn = useHistory((s) => s.globalOn)
   const setGlobalOn = useHistory((s) => s.setGlobalOn)
+  const uatFilter = useHistory((s) => s.uatFilter)
+  const cycleUatFilter = useHistory((s) => s.cycleUatFilter)
   const historyHex = useHistory((s) => s.historyHex)
 
   // Global-context overlay from adsb.lol. Pulls every 8s when toggled on so
@@ -614,6 +616,25 @@ export function RadarMap({
           active={globalOn}
         >
           🌐
+        </MapButton>
+        <MapButton
+          onClick={cycleUatFilter}
+          title={
+            uatFilter === 'all'
+              ? 'Band filter: showing ALL — click for UAT only (978 MHz)'
+              : uatFilter === 'uat-only'
+                ? 'Band filter: UAT only (978 MHz) — click for ADS-B 1090 only'
+                : 'Band filter: ADS-B 1090 only — click to show all'
+          }
+          active={uatFilter !== 'all'}
+        >
+          {uatFilter === 'all' ? (
+            '📻'
+          ) : (
+            <span className="text-[11px] font-mono leading-none tracking-tight">
+              {uatFilter === 'uat-only' ? '978' : '1090'}
+            </span>
+          )}
         </MapButton>
       </div>
 

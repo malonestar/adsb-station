@@ -30,6 +30,10 @@ export interface AircraftState {
 
   db_flags: number
 
+  /** Sticky on the readsb side after a UAT (978 MHz) sighting. Absent / 0
+   *  for 1090-only aircraft. */
+  uat_version: number | null
+
   distance_nm: number | null
   bearing_deg: number | null
   is_military: boolean
@@ -100,6 +104,7 @@ export interface CatalogRow {
   min_distance_nm: number | null
   is_military: boolean
   is_interesting: boolean
+  ever_seen_uat: boolean
   photo_url: string | null
   photo_thumb_url: string | null
 }
@@ -112,6 +117,7 @@ export type CatalogCategory =
   | 'seen_last_hour'
   | 'watchlist'
   | 'emergency_recent'
+  | 'uat'
 
 export type CatalogSort =
   | 'last_seen'

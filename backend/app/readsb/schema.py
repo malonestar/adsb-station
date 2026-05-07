@@ -41,6 +41,10 @@ class AircraftState(BaseModel):
 
     db_flags: int = 0
 
+    # Set by readsb when this aircraft was last decoded via UAT (978 MHz).
+    # Sticky on the readsb side after a UAT sighting; absent / 0 for 1090-only.
+    uat_version: int | None = None
+
     # Derived at parse time
     distance_nm: float | None = None
     bearing_deg: float | None = None

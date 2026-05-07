@@ -204,6 +204,30 @@ export function AircraftDetail(): React.ReactElement {
                     {(detail?.catalog as { operator?: string }).operator}
                   </div>
                 )}
+                {/* Band source — readsb's uat_version field is sticky after a
+                 *  UAT sighting. We can't tell from a single tick whether 1090
+                 *  is also active right now, so the live band is "UAT 978"
+                 *  when the flag is set, otherwise "ADS-B 1090". The catalog's
+                 *  `ever_seen_uat` (when present, which it is via the radar
+                 *  detail panel after the recent backend change) lets us hint
+                 *  that the aircraft is dual-band even when not currently
+                 *  decoding on UAT. */}
+                {live && (
+                  <div className="font-mono text-[10px] text-text-mid mt-1 flex items-center gap-1.5">
+                    <span className="text-text-low">SRC</span>
+                    {live.uat_version ? (
+                      <span className="text-efis-cyan">UAT 978 MHz</span>
+                    ) : (
+                      <span>ADS-B 1090 MHz</span>
+                    )}
+                    {!live.uat_version
+                      && (detail?.catalog as { ever_seen_uat?: boolean } | null)?.ever_seen_uat && (
+                        <span className="text-text-low" title="Previously seen on UAT in this catalog">
+                          (also seen on UAT)
+                        </span>
+                      )}
+                  </div>
+                )}
               </div>
 
               {/* Flight data */}

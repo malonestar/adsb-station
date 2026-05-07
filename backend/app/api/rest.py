@@ -802,6 +802,7 @@ def _catalog_row(r: AircraftCatalog) -> dict[str, Any]:
         "is_military": r.is_military,
         "is_interesting": r.is_interesting,
         "is_pia": r.is_pia,
+        "ever_seen_uat": r.ever_seen_uat,
         "photo_url": r.photo_url,
         "photo_thumb_url": r.photo_thumb_url,
         "photo_photographer": r.photo_photographer,

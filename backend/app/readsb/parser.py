@@ -97,6 +97,7 @@ def parse_aircraft(raw: dict[str, Any], now: datetime | None = None) -> Aircraft
         seen_pos=raw.get("seen_pos"),
         rssi=raw.get("rssi"),
         db_flags=db_flags,
+        uat_version=raw.get("uat_version") if isinstance(raw.get("uat_version"), int) else None,
         distance_nm=distance_nm,
         bearing_deg=bearing,
         is_military=bool(db_flags & DB_FLAG_MILITARY) or is_known_military(hex_code),

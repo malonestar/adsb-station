@@ -48,6 +48,8 @@ class AircraftCatalog(Base):
     is_military: Mapped[bool] = mapped_column(Boolean, default=False)
     is_interesting: Mapped[bool] = mapped_column(Boolean, default=False)
     is_pia: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Sticky once true — flipped by the coordinator on first UAT-decoded tick.
+    ever_seen_uat: Mapped[bool] = mapped_column(Boolean, default=False)
 
     photo_url: Mapped[str | None] = mapped_column(Text)
     photo_thumb_url: Mapped[str | None] = mapped_column(Text)

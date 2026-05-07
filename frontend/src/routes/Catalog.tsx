@@ -25,6 +25,7 @@ const CATEGORIES: CategoryChip[] = [
   { key: 'emergency_recent', label: 'EMERGENCY 24H', tone: 'alert' },
   { key: 'watchlist', label: 'WATCHLIST', tone: 'accent' },
   { key: 'interesting', label: 'INTERESTING', tone: 'accent' },
+  { key: 'uat', label: 'UAT 978', tone: 'accent' },
   { key: 'has_photo', label: 'HAS PHOTO', tone: 'default' },
 ]
 

@@ -39,6 +39,7 @@ _CATALOG_CATEGORIES = {
     "seen_last_hour",
     "watchlist",
     "emergency_recent",
+    "uat",
 }
 
 
@@ -231,6 +232,8 @@ async def catalog(
                     )
                 )
             )
+        elif cat == "uat":
+            stmt = stmt.where(AircraftCatalog.ever_seen_uat.is_(True))
 
         total = (await s.execute(select(func.count()).select_from(stmt.subquery()))).scalar() or 0
 
@@ -263,6 +266,7 @@ async def catalog(
                 "min_distance_nm": r.min_distance_nm,
                 "is_military": r.is_military,
                 "is_interesting": r.is_interesting,
+                "ever_seen_uat": r.ever_seen_uat,
                 "photo_url": r.photo_url,
                 "photo_thumb_url": r.photo_thumb_url,
             }

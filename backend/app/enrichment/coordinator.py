@@ -225,6 +225,8 @@ class EnrichmentCoordinator:
             row.is_military = row.is_military or state.is_military or op_mil
             row.is_interesting = row.is_interesting or state.is_interesting or op_int
             row.is_pia = row.is_pia or state.is_pia
+            if state.uat_version:
+                row.ever_seen_uat = True
             if row.is_military or row.is_interesting:
                 classifier.remember(
                     state.hex,
@@ -279,7 +281,10 @@ class EnrichmentCoordinator:
                 min_distance_nm = CASE
                     WHEN :dist IS NOT NULL
                          AND (min_distance_nm IS NULL OR :dist < min_distance_nm)
-                    THEN :dist ELSE min_distance_nm END
+                    THEN :dist ELSE min_distance_nm END,
+                ever_seen_uat = CASE
+                    WHEN :uat IS NOT NULL AND :uat > 0
+                    THEN 1 ELSE ever_seen_uat END
             WHERE hex = :hex
             """
         )
@@ -294,6 +299,7 @@ class EnrichmentCoordinator:
                         "alt": state.alt_baro,
                         "gs": int(state.gs) if state.gs is not None else None,
                         "dist": state.distance_nm,
+                        "uat": state.uat_version,
                     },
                 )
 
