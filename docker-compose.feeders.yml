@@ -14,6 +14,10 @@ services:
       - RECEIVER_TYPE=relay
       - BEASTHOST=ultrafeeder
       - BEASTPORT=30005
+      # UAT (978 MHz) feed — dump978 sends raw faup978 messages on :30978
+      # which piaware ingests and reports under the same FA site (273304).
+      - UAT_RECEIVER_TYPE=relay
+      - UAT_RECEIVER_HOST=dump978
     volumes:
       - /mnt/ssd/data/piaware:/var/cache/piaware
     tmpfs:
@@ -84,6 +88,32 @@ services:
       # relevant env var if we ever want to disable it is ENABLE_MLAT=false.
     volumes:
       - /mnt/ssd/data/rbfeeder:/etc/rbfeeder
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+    networks:
+      - adsb_net
+
+  # 978 MHz UAT decoder. Pinned to dongle serial '978' (FA Pro Stick + dual-band
+  # filter on splitter leg B). Raw faup978 stream on 30978 → piaware (UAT) and
+  # ultrafeeder (READSB_NET_CONNECTOR uat_in) for combined 1090+UAT tar1090 view.
+  dump978:
+    image: ghcr.io/sdr-enthusiasts/docker-dump978:latest
+    container_name: dump978
+    hostname: dump978
+    restart: unless-stopped
+    device_cgroup_rules:
+      - 'c 189:* rwm'
+    environment:
+      - LOGLEVEL=error
+      - TZ=${FEEDER_TZ}
+      - LAT=${FEEDER_LAT}
+      - LON=${FEEDER_LON}
+      - DUMP978_RTLSDR_DEVICE=978
+      - DUMP978_SDR_GAIN=autogain
+      - DUMP978_SDR_PPM=0
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
     tmpfs:
       - /run:exec,size=64M
       - /var/log

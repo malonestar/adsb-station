@@ -26,7 +26,10 @@ services:
       - READSB_STATS_RANGE=true
       - READSB_NET_SBS_OUTPUT_PORT=30003
       - READSB_NET_BEAST_OUTPUT_PORT=30005
-      - READSB_NET_CONNECTOR=
+      # Pull UAT (978 MHz) raw stream from dump978 sidecar → readsb merges into
+      # tar1090 + outbound feeds. Aggregators that accept UAT see it under our
+      # existing station IDs; FR24/AirNav silently drop the non-1090 frames.
+      - READSB_NET_CONNECTOR=dump978,30978,uat_in
       - PROMETHEUSMETRICS_ENABLE=true
       - TAR1090_DEFAULTCENTERLAT=${FEEDER_LAT}
       - TAR1090_DEFAULTCENTERLON=${FEEDER_LON}
