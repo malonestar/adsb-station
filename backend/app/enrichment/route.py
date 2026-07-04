@@ -104,21 +104,30 @@ class RouteService:
         self._sem_hexdb = asyncio.Semaphore(2)
         self._sem_aeroapi = asyncio.Semaphore(2)
 
-    async def get_route(self, callsign: str | None) -> RouteInfo | None:
+    async def get_route(
+        self, callsign: str | None, *, allow_aeroapi: bool = False
+    ) -> RouteInfo | None:
+        # AeroAPI is metered (~$0.005/call). The eager enrichment path that
+        # runs for every observed callsign passes allow_aeroapi=False so we
+        # only cascade to free aggregators in the background; the metered tier
+        # fires only on explicit user actions (detail-panel click, telegram
+        # /info reply) where the caller passes allow_aeroapi=True.
         norm = _normalize_callsign(callsign)
         if norm is None:
             return None
 
-        # 1. Cache lookup
+        # 1. Cache lookup. Skip "not_found" entries when the caller is willing
+        # to pay for AeroAPI — a prior eager miss may have cached a not_found
+        # that AeroAPI could resolve.
         cached = await self._cache_get(norm)
-        if cached is not None:
+        if cached is not None and not (allow_aeroapi and cached.source == "not_found"):
             return cached
 
         # 2. Try each tier. Return the first hit; otherwise cache a miss.
         result = await self._fetch_adsbdb(norm)
         if result is None:
             result = await self._fetch_hexdb(norm)
-        if result is None and settings.flightaware_aeroapi_key:
+        if result is None and allow_aeroapi and settings.flightaware_aeroapi_key:
             result = await self._fetch_aeroapi(norm)
 
         if result is None:

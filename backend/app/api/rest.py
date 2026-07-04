@@ -405,7 +405,7 @@ async def aircraft_route(hex_code: str, request: Request) -> dict[str, Any]:
             "source": "no_callsign",
         }
     try:
-        route = await route_service.get_route(callsign)
+        route = await route_service.get_route(callsign, allow_aeroapi=True)
     except Exception as e:  # noqa: BLE001
         log.exception("route_lookup_error", hex=hex_code, callsign=callsign)
         return {

@@ -142,9 +142,10 @@ Everything that varies per-station lives in `.env`. The committed
   `FEEDER_ADSBX_UUID`, `FEEDER_OPENSKY_USERNAME`,
   `FEEDER_OPENSKY_SERIAL`. Get each from the respective network's
   signup flow.
-- **Notifications** — `ADSB_TELEGRAM_BOT_TOKEN` (from @BotFather),
-  `ADSB_TELEGRAM_CHAT_ID`, `ADSB_DISCORD_WEBHOOK_URL`. Email/SMTP
-  vars are optional and currently commented out.
+- **Notifications** — `ADSB_TELEGRAM_BOT_TOKEN` (from @BotFather)
+  and `ADSB_TELEGRAM_CHAT_ID` are required. `ADSB_DISCORD_WEBHOOK_URL`
+  and email/SMTP vars are optional and currently commented out — see
+  `pi-setup/alerts/README.md` for the disable/re-enable pattern.
 - **Optional paid APIs** — `ADSB_FLIGHTAWARE_AEROAPI_KEY` is used
   only as Tier-3 fallback for flight route lookups when adsbdb and
   hexdb both miss. Realistic worst-case spend ~$0.50/month. Leave

@@ -461,7 +461,7 @@ class CommandRouter:
         route_line = ""
         if state.flight:
             try:
-                route = await route_service.get_route(state.flight)
+                route = await route_service.get_route(state.flight, allow_aeroapi=True)
                 if (
                     route is not None
                     and route.source != "not_found"
