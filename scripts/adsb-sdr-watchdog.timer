@@ -1,0 +1,11 @@
+[Unit]
+Description=Fire the ADS-B SDR watchdog every minute
+
+[Timer]
+OnBootSec=120s
+OnActiveSec=60s
+OnUnitActiveSec=60s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

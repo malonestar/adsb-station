@@ -1,0 +1,10 @@
+[Unit]
+Description=ADS-B SDR watchdog (recover a wedged/flapping 1090 RTL-SDR)
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/mnt/ssd/adsb/scripts/sdr-watchdog.sh
+# root: needs docker + write access to /sys/bus/usb/.../authorized
+User=root
