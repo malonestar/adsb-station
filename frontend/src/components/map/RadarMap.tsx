@@ -24,6 +24,31 @@ const MIN_ZOOM = 4
 const MAX_ZOOM = 14
 const INITIAL_ZOOM = 7.5
 
+// Raster basemap. CARTO began requiring an API key in late 2026 (keyless tiles
+// come back as an "API KEY REQUIRED" watermark). Free non-commercial key from
+// carto.com/basemaps/apikey → `VITE_CARTO_KEY=...` in frontend/.env.local, then
+// rebuild the frontend image. Without a key we fall back to Esri's keyless
+// Dark Gray Canvas so the map never renders watermark tiles.
+// CARTO variants: "dark_all" (default) · "dark_nolabels" · "voyager" · "positron".
+// Whitelist `basemaps.cartocdn.com` / `server.arcgisonline.com` in Pi-hole if tiles fail.
+const CARTO_VARIANT = 'dark_all'
+const CARTO_KEY = import.meta.env.VITE_CARTO_KEY?.trim()
+const BASEMAP = CARTO_KEY
+  ? {
+      url: `https://basemaps.cartocdn.com/rastertiles/${CARTO_VARIANT}/{z}/{x}/{y}@2x.png?key=${encodeURIComponent(CARTO_KEY)}`,
+      maxZoom: 19,
+      tint: [255, 255, 255] as [number, number, number],
+      attribution: '© OpenStreetMap contributors © CARTO',
+    }
+  : {
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+      maxZoom: 16,
+      // Esri's dark gray is much lighter than CARTO dark_all; tint the tiles (not the
+      // whole canvas — the brightness filter below also lifts trails/rings) toward it.
+      tint: [115, 115, 120] as [number, number, number],
+      attribution: 'Esri, HERE, Garmin, © OpenStreetMap contributors',
+    }
+
 interface ViewState {
   longitude: number
   latitude: number
@@ -304,25 +329,14 @@ export function RadarMap({
     const out: unknown[] = []
 
     // ─── Basemap ────────────────────────────────────────────────────
-    // Raster tile basemap. Swap BASEMAP_VARIANT below to taste:
-    //   "dark_all"      — dark muted, default
-    //   "dark_nolabels" — dark muted, no city/road labels (cleaner radar)
-    //   "voyager"       — mid-tone neutral, good contrast, readable
-    //   "positron"      — bright white/light (not recommended for radar feel)
-    // Whitelist `basemaps.cartocdn.com` in Pi-hole if tiles fail to load.
-    const BASEMAP_VARIANT = 'dark_all'
+    // See BASEMAP below: CARTO when VITE_CARTO_KEY is set, else keyless Esri.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     out.push(
       new TileLayer({
         id: 'basemap',
-        data: [
-          `https://a.basemaps.cartocdn.com/${BASEMAP_VARIANT}/{z}/{x}/{y}@2x.png`,
-          `https://b.basemaps.cartocdn.com/${BASEMAP_VARIANT}/{z}/{x}/{y}@2x.png`,
-          `https://c.basemaps.cartocdn.com/${BASEMAP_VARIANT}/{z}/{x}/{y}@2x.png`,
-          `https://d.basemaps.cartocdn.com/${BASEMAP_VARIANT}/{z}/{x}/{y}@2x.png`,
-        ],
+        data: BASEMAP.url,
         minZoom: 0,
-        maxZoom: 19,
+        maxZoom: BASEMAP.maxZoom,
         tileSize: 256,
         // deck.gl's TileLayer sublayer types are tricky; use any and cast.
         renderSubLayers: (props: any) => {
@@ -332,6 +346,7 @@ export function RadarMap({
             image: props.data,
             bounds: [west, south, east, north],
             opacity: 1.0,
+            tintColor: BASEMAP.tint,
           })
         },
       }),
@@ -673,6 +688,11 @@ export function RadarMap({
       {/* Zoom indicator */}
       <div className="absolute top-3 left-3 z-20 font-mono text-[10px] tracking-wider px-2 py-1 bg-bg-1/70 border border-stroke-hair text-text-mid">
         Z {viewState.zoom.toFixed(1)}
+      </div>
+
+      {/* Basemap attribution — required by both CARTO and Esri terms. */}
+      <div className="absolute bottom-1 left-2 z-10 pointer-events-none font-mono text-[9px] text-text-low/70">
+        {BASEMAP.attribution}
       </div>
     </div>
   )
