@@ -112,7 +112,13 @@ services:
       - DUMP978_RTLSDR_DEVICE=978
       - DUMP978_SDR_GAIN=autogain
       - DUMP978_SDR_PPM=0
-    devices:
+    # Bind-mount (not `devices:`) so USB re-enumeration propagates live. With
+    # `devices:` Docker snapshots the device nodes at container-create time, so
+    # a dongle that disconnects and comes back as a new devnum leaves the
+    # container holding a dead node -> dump978-fa crash-loops with
+    # rtlsdr_get_index_by_serial(978) - -3. device_cgroup_rules above already
+    # grants access to every usb minor, so the mount alone is sufficient.
+    volumes:
       - /dev/bus/usb:/dev/bus/usb
     tmpfs:
       - /run:exec,size=64M
